@@ -40,8 +40,8 @@ func (q *Queue) delayedKey() string {
 	return q.client.buildKey("delayed_queue", q.name)
 }
 
-func (q *Queue) jobKey(j *Job) string {
-	return q.client.buildKey("jobs", strconv.Itoa(j.ID))
+func (q *Queue) jobKey(id int) string {
+	return q.client.buildKey("jobs", strconv.Itoa(id))
 }
 
 func (q *Queue) incrJobID(c Conn) (int, error) {
@@ -49,7 +49,7 @@ func (q *Queue) incrJobID(c Conn) (int, error) {
 }
 
 func (q *Queue) persistJob(j *Job, c Conn, fields ...string) error {
-	jobKey := q.jobKey(j)
+	jobKey := q.jobKey(j.ID)
 	hash := j.asHash()
 
 	if len(fields) == 0 {
@@ -67,7 +67,7 @@ func (q *Queue) persistJob(j *Job, c Conn, fields ...string) error {
 }
 
 func (q *Queue) addJobToQueue(j *Job, conn Conn) error {
-	_, err := conn.LPush(q.key(j.Priority), q.jobKey(j))
+	_, err := conn.LPush(q.key(j.Priority), q.jobKey(j.ID))
 	return err
 }
 
@@ -89,7 +89,7 @@ func (q *Queue) Submit(priority int, payload interface{}) (*Job, error) {
 }
 
 func (q *Queue) addJobToDelayedQueue(j *Job, conn Conn) error {
-	_, err := conn.ZAddNX(q.delayedKey(), timeAsFloat(j.DelayedUntil), q.jobKey(j))
+	_, err := conn.ZAddNX(q.delayedKey(), timeAsFloat(j.DelayedUntil), q.jobKey(j.ID))
 	return err
 }
 
@@ -132,6 +132,14 @@ func (q *Queue) Kill(j *Job) error {
 	j.State = Dead
 
 	return q.persistJob(j, conn, "state")
+}
+
+func (q *Queue) Job(id int) (Job, error) {
+	c := q.client.getConn()
+	defer q.client.putConn(c)
+
+	job, err := unmarshalJob(c, q.jobKey(id))
+	return *job, err
 }
 
 func (q *Queue) Wait() (*Job, error) {
