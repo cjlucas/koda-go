@@ -2,6 +2,7 @@ package koda
 
 import (
 	"strconv"
+	"testing"
 	"time"
 )
 
@@ -158,3 +159,16 @@ func (c mockConn) ZRangeByScore(key string, opt ZRangeByScoreOpts) ([]string, er
 }
 
 func (c mockConn) Close() error { return nil }
+
+func newTestClient() *Client {
+	return NewClient(&Options{
+		ConnFactory: func() Conn {
+			return mockConn{}
+		},
+	})
+}
+
+func TestGetQueue(t *testing.T) {
+	c := newTestClient()
+	c.GetQueue("q")
+}
