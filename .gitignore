@@ -23,5 +23,5 @@ _testmain.go
 *.test
 *.prof
 
-koda/vendor/*
-!koda/vendor/manifest
+vendor/*
+vendor/manifest
