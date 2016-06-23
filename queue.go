@@ -110,6 +110,7 @@ func (q *Queue) SubmitDelayed(d time.Duration, payload interface{}) (*Job, error
 	return j, q.addJobToDelayedQueue(j, conn)
 }
 
+// TODO: Move to Client
 func (q *Queue) Retry(j *Job, d time.Duration) error {
 	conn := q.client.getConn()
 	defer q.client.putConn(conn)
@@ -123,6 +124,7 @@ func (q *Queue) Retry(j *Job, d time.Duration) error {
 	return q.addJobToDelayedQueue(j, conn)
 }
 
+// TODO: Move to Client
 func (q *Queue) Kill(j *Job) error {
 	conn := q.client.getConn()
 	defer q.client.putConn(conn)

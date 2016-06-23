@@ -31,7 +31,7 @@ func (c *mockConn) Incr(key string) (int, error) {
 		return 0, err
 	}
 
-	c.keys[key] = string(n + 1)
+	c.keys[key] = strconv.Itoa(n + 1)
 	return n + 1, nil
 }
 
