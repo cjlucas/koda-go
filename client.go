@@ -12,8 +12,9 @@ import (
 var DefaultClient = NewClient(nil)
 
 type Client struct {
-	opts     *Options
-	connPool sync.Pool
+	opts        *Options
+	connPool    sync.Pool
+	dispatchers map[string]dispatcher
 }
 
 type Options struct {
@@ -57,12 +58,13 @@ func NewClient(opts *Options) *Client {
 		}
 	}
 
-	c := Client{opts: opts}
-	c.connPool = sync.Pool{New: func() interface{} {
-		return opts.ConnFactory()
-	}}
-
-	return &c
+	return &Client{
+		opts:        opts,
+		dispatchers: make(map[string]dispatcher),
+		connPool: sync.Pool{New: func() interface{} {
+			return opts.ConnFactory()
+		}},
+	}
 }
 
 // TODO: Rename to Queue
@@ -71,6 +73,10 @@ func (c *Client) GetQueue(name string) *Queue {
 		name:   name,
 		client: c,
 	}
+}
+
+func (c *Client) Register(queue string, numWorkers int, f HandlerFunc) {
+
 }
 
 func (c *Client) getConn() Conn {
