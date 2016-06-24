@@ -162,9 +162,10 @@ func (c *mockConn) ZRangeByScore(key string, opt ZRangeByScoreOpts) ([]string, e
 func (c *mockConn) Close() error { return nil }
 
 func newTestClient() *Client {
+	client := newConn()
 	return NewClient(&Options{
 		ConnFactory: func() Conn {
-			return newConn()
+			return client
 		},
 	})
 }
