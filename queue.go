@@ -67,7 +67,7 @@ func (q *Queue) persistJob(j *Job, c Conn, fields ...string) error {
 }
 
 func (q *Queue) addJobToQueue(j *Job, conn Conn) error {
-	_, err := conn.LPush(q.key(j.Priority), q.jobKey(j.ID))
+	_, err := conn.RPush(q.key(j.Priority), q.jobKey(j.ID))
 	return err
 }
 
@@ -155,7 +155,7 @@ func (q *Queue) Wait() (*Job, error) {
 
 	var jobKey string
 	for {
-		results, err := conn.BRPop(1*time.Second, queues...)
+		results, err := conn.BLPop(1*time.Second, queues...)
 		if err != nil && err != NilError {
 			if err, ok := err.(net.Error); ok && err.Temporary() {
 				// TODO(clucas): In backoff algorithm may be appropriate here
