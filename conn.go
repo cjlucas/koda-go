@@ -16,8 +16,8 @@ type Conn interface {
 	// TODO: Update this to return a map[string]string
 	HGetAll(key string) ([]string, error)
 	HSetAll(key string, fields map[string]string) error
-	LPush(key string, value ...string) (int, error)
-	BRPop(timeout time.Duration, keys ...string) ([]string, error)
+	RPush(key string, value ...string) (int, error)
+	BLPop(timeout time.Duration, keys ...string) ([]string, error)
 	ZAddNX(key string, score float64, member string) (int, error)
 	ZRem(key string, members ...string) (int, error)
 	ZRangeByScore(key string, opt ZRangeByScoreOpts) ([]string, error)

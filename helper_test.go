@@ -62,12 +62,12 @@ func (c *mockConn) HSetAll(key string, fields map[string]string) error {
 	return nil
 }
 
-func (c *mockConn) LPush(key string, value ...string) (int, error) {
+func (c *mockConn) RPush(key string, value ...string) (int, error) {
 	c.lists[key] = append(c.lists[key], value...)
 	return len(c.lists[key]), nil
 }
 
-func (c *mockConn) BRPop(timeout time.Duration, keys ...string) ([]string, error) {
+func (c *mockConn) BLPop(timeout time.Duration, keys ...string) ([]string, error) {
 	// TODO: add support for timeouts?
 	for _, key := range keys {
 		if len(c.lists[key]) > 0 {
@@ -162,9 +162,10 @@ func (c *mockConn) ZRangeByScore(key string, opt ZRangeByScoreOpts) ([]string, e
 func (c *mockConn) Close() error { return nil }
 
 func newTestClient() *Client {
+	client := newConn()
 	return NewClient(&Options{
 		ConnFactory: func() Conn {
-			return newConn()
+			return client
 		},
 	})
 }

@@ -13,7 +13,7 @@ func TestSubmit(t *testing.T) {
 		Payload  interface{}
 	}{
 		{Priority: 100, Payload: nil},
-		{Priority: 100, Payload: map[string]interface{}{"foo": "bar"}},
+		{Priority: 50, Payload: map[string]interface{}{"foo": "bar"}},
 	}
 
 	curID := 0
@@ -30,6 +30,14 @@ func TestSubmit(t *testing.T) {
 				t.Errorf("unexpected id: %d != %d", job.ID, curID)
 			}
 
+			if job.CreationTime.IsZero() {
+				t.Error("creation time was not set")
+			}
+
+			if job.State != Queued {
+				t.Errorf("unexpected job state: %s", job.State)
+			}
+
 			if !reflect.DeepEqual(c.Payload, job.Payload) {
 				t.Errorf("payload mismatch: %#v != %#v", c.Payload, job.Payload)
 			}
@@ -39,14 +47,12 @@ func TestSubmit(t *testing.T) {
 			}
 		}
 
-		// TODO: compare against job returned by Queue.Job as well
-		equals(*job)
-
 		j, err := q.Job(job.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
 
+		equals(*job)
 		equals(j)
 	}
 }

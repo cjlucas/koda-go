@@ -29,13 +29,13 @@ func (r *GoRedisAdapter) HSetAll(key string, fields map[string]string) error {
 	return err
 }
 
-func (r *GoRedisAdapter) LPush(key string, value ...string) (int, error) {
-	cmd := r.R.LPush(key, value...)
+func (r *GoRedisAdapter) RPush(key string, value ...string) (int, error) {
+	cmd := r.R.RPush(key, value...)
 	return int(cmd.Val()), cmd.Err()
 }
 
-func (r *GoRedisAdapter) BRPop(timeout time.Duration, keys ...string) ([]string, error) {
-	return r.R.BRPop(timeout, keys...).Result()
+func (r *GoRedisAdapter) BLPop(timeout time.Duration, keys ...string) ([]string, error) {
+	return r.R.BLPop(timeout, keys...).Result()
 }
 
 func (r *GoRedisAdapter) ZAddNX(key string, score float64, member string) (int, error) {
