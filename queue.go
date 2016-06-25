@@ -1,7 +1,6 @@
 package koda
 
 import (
-	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -65,14 +64,6 @@ func (q *Queue) persistJob(j *Job, c Conn, fields ...string) error {
 	}
 
 	return c.HSetAll(jobKey, out)
-}
-
-func (q *Queue) updateState(job Job, state JobState) error {
-	conn := q.client.getConn()
-	defer q.client.putConn(conn)
-
-	job.State = state
-	return q.persistJob(&job, conn, "state")
 }
 
 func (q *Queue) addJobToQueue(j *Job, conn Conn) error {
@@ -146,8 +137,6 @@ func (q *Queue) Kill(j *Job) error {
 func (q *Queue) Job(id int) (Job, error) {
 	c := q.client.getConn()
 	defer q.client.putConn(c)
-
-	fmt.Println("fetching job:", id)
 
 	job, err := unmarshalJob(c, q.jobKey(id))
 	return *job, err

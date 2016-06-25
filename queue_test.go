@@ -56,3 +56,18 @@ func TestSubmit(t *testing.T) {
 		equals(j)
 	}
 }
+
+func TestWait(t *testing.T) {
+	client := newTestClient()
+	q := client.GetQueue("q")
+	q.Submit(100, nil)
+
+	job, err := q.Wait()
+	if err != nil {
+		t.Fatalf("error while waiting: %s", err)
+	}
+
+	if job.State != Working {
+		t.Errorf("incorrect state: %s", job.State)
+	}
+}

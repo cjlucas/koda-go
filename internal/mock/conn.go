@@ -1,7 +1,6 @@
 package mock
 
 import (
-	"fmt"
 	"strconv"
 	"sync"
 	"time"
@@ -52,8 +51,6 @@ func (c *Conn) HGetAll(key string) ([]string, error) {
 		pairs = append(pairs, k)
 		pairs = append(pairs, v)
 	}
-
-	fmt.Println("pairs", pairs)
 
 	return pairs, nil
 }

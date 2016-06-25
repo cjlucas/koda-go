@@ -2,7 +2,7 @@ package koda
 
 import "time"
 
-type HandlerFunc func(c *Client, j Job)
+type HandlerFunc func(j Job) error
 
 type dispatcher struct {
 	Queue      *Queue
@@ -30,10 +30,15 @@ func (d *dispatcher) Run() chan<- struct{} {
 					continue
 				}
 
-				d.Queue.updateState(*j, Working)
-
 				go func() {
-					d.Handler(d.Queue.client, *j)
+					err := d.Handler(*j)
+					if err != nil {
+						if j.NumAttempts < 5 {
+							d.Queue.Retry(j, 5*time.Minute)
+						} else {
+							d.Queue.Kill(j)
+						}
+					}
 					slots <- struct{}{}
 				}()
 			}
