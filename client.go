@@ -76,7 +76,11 @@ func (c *Client) GetQueue(name string) *Queue {
 }
 
 func (c *Client) Register(queue string, numWorkers int, f HandlerFunc) {
-
+	c.dispatchers[queue] = dispatcher{
+		Queue:      c.GetQueue(queue),
+		NumWorkers: numWorkers,
+		Handler:    f,
+	}
 }
 
 func (c *Client) getConn() Conn {

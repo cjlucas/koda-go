@@ -20,6 +20,6 @@ type Conn interface {
 	BLPop(timeout time.Duration, keys ...string) ([]string, error)
 	ZAddNX(key string, score float64, member string) (int, error)
 	ZRem(key string, members ...string) (int, error)
-	ZRangeByScore(key string, opt ZRangeByScoreOpts) ([]string, error)
+	ZRangeByScore(key string, min, max float64, minIncl, maxIncl bool, offset, count int) ([]string, error)
 	Close() error
 }
