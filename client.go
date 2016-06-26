@@ -101,6 +101,7 @@ func (c *Client) Register(queue string, numWorkers int, f HandlerFunc) {
 
 func (c *Client) Work() func() {
 	ch := make(chan struct{})
+	done := make(chan struct{})
 
 	var stoppers []func()
 	for _, d := range c.dispatchers {
@@ -112,10 +113,12 @@ func (c *Client) Work() func() {
 		for _, f := range stoppers {
 			f()
 		}
+		done <- struct{}{}
 	}()
 
 	return func() {
 		close(ch)
+		<-done
 	}
 }
 

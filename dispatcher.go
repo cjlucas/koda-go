@@ -12,7 +12,8 @@ type dispatcher struct {
 	RetryInterval time.Duration
 }
 
-// cancellation function ensures goroutine has exited before returning
+// Run returns a cancellation function which blocks until
+// all outstanding workers have returned
 func (d *dispatcher) Run() func() {
 	slots := make(chan struct{}, d.NumWorkers)
 	for i := 0; i < d.NumWorkers; i++ {
@@ -20,11 +21,13 @@ func (d *dispatcher) Run() func() {
 	}
 
 	stop := make(chan struct{})
+	done := make(chan struct{})
 
 	go func() {
 		for {
 			select {
 			case <-stop:
+				done <- struct{}{}
 				return
 			case <-slots:
 				job, err := d.Queue.Wait()
@@ -51,6 +54,12 @@ func (d *dispatcher) Run() func() {
 	}()
 
 	return func() {
+		// Ensure all workers complete
+		for i := 0; i < d.NumWorkers; i++ {
+			<-slots
+		}
+
 		close(stop)
+		<-done
 	}
 }
