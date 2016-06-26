@@ -22,6 +22,6 @@ func Work() func() {
 	return DefaultClient.Work()
 }
 
-func WorkForever() func() {
-	return DefaultClient.WorkForever()
+func WorkForever() {
+	DefaultClient.WorkForever()
 }
