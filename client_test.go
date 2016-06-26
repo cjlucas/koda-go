@@ -1,6 +1,8 @@
 package koda
 
 import (
+	"os"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -28,11 +30,32 @@ func TestWork(t *testing.T) {
 
 	select {
 	case <-next:
-		break
 	case <-time.After(1 * time.Second):
 		t.Fatal("worker was not called")
 		return
 	}
 
 	stop()
+}
+
+func TestWorkForever(t *testing.T) {
+	client := newTestClient()
+
+	next := make(chan struct{})
+
+	go func() {
+		client.WorkForever()
+		next <- struct{}{}
+	}()
+
+	go func() {
+		time.Sleep(1 * time.Millisecond)
+		syscall.Kill(os.Getpid(), syscall.SIGINT)
+	}()
+
+	select {
+	case <-next:
+	case <-time.After(1 * time.Second):
+		t.Fatal("timed out")
+	}
 }

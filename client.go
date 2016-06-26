@@ -2,6 +2,8 @@ package koda
 
 import (
 	"net/url"
+	"os"
+	"os/signal"
 	"strconv"
 	"strings"
 	"sync"
@@ -120,6 +122,16 @@ func (c *Client) Work() func() {
 		close(ch)
 		<-done
 	}
+}
+
+func (c *Client) WorkForever() {
+	sig := make(chan os.Signal)
+	signal.Notify(sig, os.Interrupt)
+	stop := c.Work()
+
+	<-sig
+	signal.Stop(sig)
+	stop()
 }
 
 func (c *Client) getConn() Conn {
