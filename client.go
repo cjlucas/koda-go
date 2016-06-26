@@ -75,8 +75,10 @@ func (c *Client) newQueue(name string) *Queue {
 	}
 
 	q.queueKeys = make([]string, maxPriority-minPriority+1)
-	for i := minPriority; i <= maxPriority; i++ {
-		q.queueKeys[i] = q.key(i)
+	i := 0
+	for j := maxPriority; j >= minPriority; j-- {
+		q.queueKeys[i] = q.key(j)
+		i++
 	}
 
 	return q

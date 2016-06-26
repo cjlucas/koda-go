@@ -3,7 +3,6 @@ package koda
 import (
 	"reflect"
 	"testing"
-	"time"
 )
 
 func TestSubmit(t *testing.T) {
@@ -88,28 +87,19 @@ func TestWait_Delayed(t *testing.T) {
 	}
 }
 
-func TestWork(t *testing.T) {
+func TestWait_Priority(t *testing.T) {
 	client := newTestClient()
 	q := client.GetQueue("q")
 
-	q.Submit(100, nil)
+	job1, _ := q.Submit(100, nil)
+	q.Submit(50, nil)
 
-	next := make(chan struct{})
-	client.Register("q", 1, func(job Job) error {
-		next <- struct{}{}
-		return nil
-	})
-
-	stop := client.Work()
-
-	select {
-	case <-next:
-		break
-	case <-time.After(1 * time.Second):
-		t.Fatal("worker was not called")
-		return
+	j, err := q.Wait()
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	stop <- struct{}{}
-	<-stop
+	if j.ID != job1.ID {
+		t.Fatal("failed to get highest priority job")
+	}
 }
