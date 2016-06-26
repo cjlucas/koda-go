@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"gopkg.in/redis.v3"
 )
@@ -77,9 +78,11 @@ func (c *Client) GetQueue(name string) *Queue {
 
 func (c *Client) Register(queue string, numWorkers int, f HandlerFunc) {
 	c.dispatchers[queue] = dispatcher{
-		Queue:      c.GetQueue(queue),
-		NumWorkers: numWorkers,
-		Handler:    f,
+		Queue:         c.GetQueue(queue),
+		NumWorkers:    numWorkers,
+		Handler:       f,
+		MaxRetries:    5,
+		RetryInterval: 5 * time.Second,
 	}
 }
 

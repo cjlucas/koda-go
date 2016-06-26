@@ -1,8 +1,10 @@
 package koda
 
 import (
+	"errors"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestDispatcherRun(t *testing.T) {
@@ -44,7 +46,13 @@ func TestDispatcherRun(t *testing.T) {
 	stop := dispatcher.Run()
 	defer func() { stop <- struct{}{} }()
 
-	<-next
+	select {
+	case <-next:
+		break
+	case <-time.After(1 * time.Second):
+		t.Fatal("timed out")
+		return
+	}
 
 	// snapshot jobs
 	jobs := make([]Job, len(jobIDs))
@@ -70,5 +78,35 @@ func TestDispatcherRun(t *testing.T) {
 
 	if jobs[N].State != Queued {
 		t.Error("last job is not queued:", jobs[N].State)
+	}
+}
+
+func TestDispatcherRun_Retry(t *testing.T) {
+	c := newTestClient()
+	q := c.GetQueue("q")
+	job, _ := q.Submit(100, nil)
+
+	next := make(chan struct{})
+	dispatcher := dispatcher{
+		Queue:      q,
+		NumWorkers: 1,
+		Handler: func(job Job) error {
+			next <- struct{}{}
+			return errors.New("")
+		},
+	}
+	dispatcher.Run()
+
+	select {
+	case <-next:
+		break
+	case <-time.After(1 * time.Second):
+		t.Fatal("timed out")
+		return
+	}
+
+	j, _ := q.Job(job.ID)
+	if j.State != Dead {
+		t.Error("incorrect state:", job.State)
 	}
 }

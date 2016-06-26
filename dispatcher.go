@@ -5,9 +5,11 @@ import "time"
 type HandlerFunc func(j Job) error
 
 type dispatcher struct {
-	Queue      *Queue
-	NumWorkers int
-	Handler    HandlerFunc
+	Queue         *Queue
+	NumWorkers    int
+	Handler       HandlerFunc
+	MaxRetries    int
+	RetryInterval time.Duration
 }
 
 func (d *dispatcher) Run() chan<- struct{} {
@@ -33,8 +35,8 @@ func (d *dispatcher) Run() chan<- struct{} {
 				go func() {
 					err := d.Handler(*j)
 					if err != nil {
-						if j.NumAttempts < 5 {
-							d.Queue.Retry(j, 5*time.Minute)
+						if j.NumAttempts < d.MaxRetries {
+							d.Queue.Retry(j, d.RetryInterval)
 						} else {
 							d.Queue.Kill(j)
 						}
