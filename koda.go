@@ -21,3 +21,7 @@ func Register(queue string, numWorkers int, f HandlerFunc) {
 func Work() func() {
 	return DefaultClient.Work()
 }
+
+func WorkForever() func() {
+	return DefaultClient.WorkForever()
+}
