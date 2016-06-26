@@ -44,8 +44,6 @@ type Job struct {
 	Payload        interface{}
 	rawPayload     string
 	NumAttempts    int
-	Queue          *Queue
-	Client         *Client
 }
 
 func (j *Job) asHash() map[string]string {
@@ -70,23 +68,6 @@ func (j *Job) asHash() map[string]string {
 
 func (j *Job) UnmarshalPayload(v interface{}) error {
 	return json.Unmarshal([]byte(j.rawPayload), v)
-}
-
-func (j *Job) Finish() error {
-	conn := j.Client.getConn()
-	defer j.Client.putConn(conn)
-
-	j.CompletionTime = time.Now().UTC()
-
-	return j.Queue.persistJob(j, conn, "completion_time")
-}
-
-func (j *Job) Retry(d time.Duration) error {
-	return j.Queue.Retry(j, d)
-}
-
-func (j *Job) Kill() error {
-	return j.Queue.Kill(j)
 }
 
 type jobUnmarshaller struct {

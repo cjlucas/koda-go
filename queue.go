@@ -111,7 +111,6 @@ func (q *Queue) SubmitDelayed(d time.Duration, payload interface{}) (*Job, error
 	return j, q.addJobToDelayedQueue(j, conn)
 }
 
-// TODO: Move to Client
 func (q *Queue) Retry(j *Job, d time.Duration) error {
 	conn := q.client.getConn()
 	defer q.client.putConn(conn)
@@ -125,7 +124,15 @@ func (q *Queue) Retry(j *Job, d time.Duration) error {
 	return q.addJobToDelayedQueue(j, conn)
 }
 
-// TODO: Move to Client
+func (q *Queue) Finish(j Job) error {
+	conn := q.client.getConn()
+	defer q.client.putConn(conn)
+
+	j.CompletionTime = time.Now().UTC()
+
+	return q.persistJob(&j, conn, "completion_time")
+}
+
 func (q *Queue) Kill(j *Job) error {
 	conn := q.client.getConn()
 	defer q.client.putConn(conn)
@@ -218,8 +225,6 @@ func (q *Queue) Wait() (Job, error) {
 
 	j.State = Working
 	j.NumAttempts++
-	j.Queue = q
-	j.Client = q.client
 
 	q.persistJob(j, conn, "state", "num_attempts")
 

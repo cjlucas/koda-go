@@ -43,7 +43,7 @@ func (d *dispatcher) Run() chan struct{} {
 							d.Queue.Kill(&job)
 						}
 					} else {
-						job.Finish()
+						d.Queue.Finish(job)
 					}
 					slots <- struct{}{}
 				}()
