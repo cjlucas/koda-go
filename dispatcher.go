@@ -25,7 +25,6 @@ func (d *dispatcher) Run() func() {
 		for {
 			select {
 			case <-stop:
-				stop = nil
 				return
 			case <-slots:
 				job, err := d.Queue.Wait()
