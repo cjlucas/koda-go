@@ -26,13 +26,15 @@ func TestDispatcherRun(t *testing.T) {
 	// register N workers to work that queue
 	next := make(chan struct{})
 	lock := sync.Mutex{}
-	hits := 0
+	hits := make(chan struct{}, N+1)
+	defer close(hits)
+
 	dispatcher := dispatcher{
 		Queue:      q,
 		NumWorkers: N,
 		Handler: func(job Job) error {
-			hits++
-			if hits == N {
+			hits <- struct{}{}
+			if len(hits) == N {
 				next <- struct{}{}
 			}
 
@@ -44,7 +46,7 @@ func TestDispatcherRun(t *testing.T) {
 
 	lock.Lock()
 	stop := dispatcher.Run()
-	defer func() { stop <- struct{}{} }()
+	defer func() { stop <- struct{}{}; <-stop }()
 
 	select {
 	case <-next:
@@ -65,8 +67,8 @@ func TestDispatcherRun(t *testing.T) {
 		jobs[i] = job
 	}
 
-	if hits != N {
-		t.Errorf("handler was hit only %d times", hits)
+	if len(hits) != N {
+		t.Errorf("handler was hit only %d times", len(hits))
 	}
 
 	lock.Unlock()
@@ -84,18 +86,25 @@ func TestDispatcherRun(t *testing.T) {
 func TestDispatcherRun_Retry(t *testing.T) {
 	c := newTestClient()
 	q := c.GetQueue("q")
+
 	job, _ := q.Submit(100, nil)
 
+	n := 5
+	hits := 0
 	next := make(chan struct{})
 	dispatcher := dispatcher{
 		Queue:      q,
 		NumWorkers: 1,
+		MaxRetries: n,
 		Handler: func(job Job) error {
-			next <- struct{}{}
+			hits++
+			if hits == n {
+				next <- struct{}{}
+			}
 			return errors.New("")
 		},
 	}
-	dispatcher.Run()
+	stop := dispatcher.Run()
 
 	select {
 	case <-next:
@@ -105,8 +114,11 @@ func TestDispatcherRun_Retry(t *testing.T) {
 		return
 	}
 
+	stop <- struct{}{}
+	<-stop
+
 	j, _ := q.Job(job.ID)
 	if j.State != Dead {
-		t.Error("incorrect state:", job.State)
+		t.Error("incorrect state:", j.State)
 	}
 }

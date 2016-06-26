@@ -12,7 +12,7 @@ type dispatcher struct {
 	RetryInterval time.Duration
 }
 
-func (d *dispatcher) Run() chan<- struct{} {
+func (d *dispatcher) Run() chan struct{} {
 	slots := make(chan struct{}, d.NumWorkers)
 	for i := 0; i < d.NumWorkers; i++ {
 		slots <- struct{}{}
@@ -21,27 +21,29 @@ func (d *dispatcher) Run() chan<- struct{} {
 	stop := make(chan struct{})
 
 	go func() {
+		defer close(stop)
+
 		for {
 			select {
 			case <-stop:
 				return
 			case <-slots:
-				j, err := d.Queue.Wait()
-				if err != nil {
-					time.Sleep(5 * time.Second)
-					continue
+				job, err := d.Queue.Wait()
+				if job.ID == 0 || err != nil {
+					slots <- struct{}{}
+					break
 				}
 
 				go func() {
-					err := d.Handler(*j)
+					err := d.Handler(job)
 					if err != nil {
-						if j.NumAttempts < d.MaxRetries {
-							d.Queue.Retry(j, d.RetryInterval)
+						if job.NumAttempts < d.MaxRetries {
+							d.Queue.Retry(&job, d.RetryInterval)
 						} else {
-							d.Queue.Kill(j)
+							d.Queue.Kill(&job)
 						}
 					} else {
-						j.Finish()
+						job.Finish()
 					}
 					slots <- struct{}{}
 				}()

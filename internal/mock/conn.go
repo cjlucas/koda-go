@@ -41,6 +41,9 @@ func (c *Conn) Incr(key string) (int, error) {
 }
 
 func (c *Conn) HGetAll(key string) ([]string, error) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
 	hash, ok := c.hashes[key]
 	if !ok {
 		return nil, nil

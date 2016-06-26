@@ -1,7 +1,8 @@
 package koda
 
 import (
-	"net"
+	"errors"
+	"fmt"
 	"strconv"
 	"time"
 )
@@ -142,7 +143,57 @@ func (q *Queue) Job(id int) (Job, error) {
 	return *job, err
 }
 
-func (q *Queue) Wait() (*Job, error) {
+func (q *Queue) wait(conn Conn, queues ...string) (string, error) {
+	results, err := conn.BLPop(1*time.Second, queues...)
+	if err != nil && err != NilError {
+		return "", err
+	}
+
+	if len(results) > 1 {
+		return results[1], nil
+	}
+
+	delayedQueueKey := q.delayedKey()
+	results, err = conn.ZRangeByScore(
+		delayedQueueKey,
+		0,
+		timeAsFloat(time.Now().UTC()),
+		true,
+		true,
+		0,
+		1)
+
+	if err != nil {
+		return "", err
+	}
+
+	if len(results) > 0 {
+		jobKey := results[0]
+		numRemoved, err := conn.ZRem(delayedQueueKey, jobKey)
+		if err != nil {
+			return "", err
+		}
+
+		// NOTE: To prevent a race condition in which multiple clients
+		// would get the same job key via ZRangeByScore, as the clients
+		// race to remove the job key, the "winner" is the one to successfully
+		// remove the key, all other clients should continue waiting for a job
+		//
+		// Although this solution is logically correct, it could cause
+		// thrashing if meeting the race condition is a common occurance.
+		// So, an alternate solution may be necessary. Of which a Lua
+		// script that performs the zrangebyscore and zrem atomically
+		if numRemoved == 0 {
+			return "", errors.New("ZRem removed zero keys")
+		}
+
+		return jobKey, nil
+	}
+
+	return "", nil
+}
+
+func (q *Queue) Wait() (Job, error) {
 	conn := q.client.getConn()
 	defer q.client.putConn(conn)
 
@@ -151,67 +202,18 @@ func (q *Queue) Wait() (*Job, error) {
 		queues[i] = q.key(i)
 	}
 
-	delayedQueueKey := q.delayedKey()
-
-	var jobKey string
-	for {
-		results, err := conn.BLPop(1*time.Second, queues...)
-		if err != nil && err != NilError {
-			if err, ok := err.(net.Error); ok && err.Temporary() {
-				// TODO(clucas): In backoff algorithm may be appropriate here
-				time.Sleep(5 * time.Second)
-				continue
-			}
-
-			return nil, err
-		}
-
-		if len(results) > 1 {
-			jobKey = results[1]
-			break
-		}
-
-		results, err = conn.ZRangeByScore(
-			delayedQueueKey,
-			0,
-			timeAsFloat(time.Now().UTC()),
-			true,
-			true,
-			0,
-			1)
-
-		if err != nil {
-			return nil, err
-		}
-
-		if len(results) > 0 {
-			jobKey = results[0]
-			numRemoved, err := conn.ZRem(delayedQueueKey, jobKey)
-			if err != nil {
-				return nil, err
-			}
-
-			// NOTE: To prevent a race condition in which multiple clients
-			// would get the same job key via ZRangeByScore, as the clients
-			// race to remove the job key, the "winner" is the one to successfully
-			// remove the key, all other clients should continue waiting for a job
-			//
-			// Although this solution is logically correct, it could cause
-			// thrashing if meeting the race condition is a common occurance.
-			// So, an alternate solution may be necessary. Of which a Lua
-			// script that performs the zrangebyscore and zrem atomically
-			if numRemoved == 0 {
-				continue
-			} else {
-				break
-			}
-		}
-
+	jobKey, err := q.wait(conn, queues...)
+	if jobKey == "" {
+		return Job{}, errors.New("not found")
+	}
+	if err != nil {
+		return Job{}, err
 	}
 
 	j, err := unmarshalJob(conn, jobKey)
 	if err != nil {
-		return nil, err
+		fmt.Println("error while unmarshaling job", err)
+		return Job{}, err
 	}
 
 	j.State = Working
@@ -219,5 +221,7 @@ func (q *Queue) Wait() (*Job, error) {
 	j.Queue = q
 	j.Client = q.client
 
-	return j, q.persistJob(j, conn, "state", "num_attempts")
+	q.persistJob(j, conn, "state", "num_attempts")
+
+	return *j, nil
 }

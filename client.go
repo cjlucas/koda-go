@@ -89,7 +89,7 @@ func (c *Client) Register(queue string, numWorkers int, f HandlerFunc) {
 func (c *Client) Work() chan struct{} {
 	ch := make(chan struct{})
 
-	var stoppers []chan<- struct{}
+	var stoppers []chan struct{}
 	for _, d := range c.dispatchers {
 		stoppers = append(stoppers, d.Run())
 	}
@@ -99,6 +99,7 @@ func (c *Client) Work() chan struct{} {
 		close(ch)
 		for _, c := range stoppers {
 			c <- struct{}{}
+			<-c
 		}
 	}()
 

@@ -65,11 +65,26 @@ func TestWait(t *testing.T) {
 
 	job, err := q.Wait()
 	if err != nil {
-		t.Fatalf("error while waiting: %s", err)
+		t.Fatal(err)
 	}
 
 	if job.State != Working {
 		t.Errorf("incorrect state: %s", job.State)
+	}
+}
+
+func TestWait_Delayed(t *testing.T) {
+	client := newTestClient()
+	q := client.GetQueue("q")
+
+	job, _ := q.SubmitDelayed(0, nil)
+
+	j, err := q.Wait()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if job.ID != j.ID {
+		t.Errorf("id mismatch: %d != %d", job.ID, j.ID)
 	}
 }
 
