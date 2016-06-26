@@ -26,7 +26,7 @@ func TestWork(t *testing.T) {
 		return nil
 	})
 
-	stop := client.Work()
+	canceller := client.Work()
 
 	select {
 	case <-next:
@@ -35,7 +35,7 @@ func TestWork(t *testing.T) {
 		return
 	}
 
-	stop()
+	canceller.Cancel()
 }
 
 func TestWorkForever(t *testing.T) {

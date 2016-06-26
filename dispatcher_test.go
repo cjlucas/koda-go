@@ -45,8 +45,8 @@ func TestDispatcherRun(t *testing.T) {
 	}
 
 	lock.Lock()
-	stop := dispatcher.Run()
-	defer stop()
+	dispatcher.Run()
+	defer dispatcher.Cancel(0)
 
 	select {
 	case <-next:
@@ -104,7 +104,7 @@ func TestDispatcherRun_Retry(t *testing.T) {
 			return errors.New("")
 		},
 	}
-	stop := dispatcher.Run()
+	dispatcher.Run()
 
 	select {
 	case <-next:
@@ -114,10 +114,88 @@ func TestDispatcherRun_Retry(t *testing.T) {
 		return
 	}
 
-	stop()
+	dispatcher.Cancel(0)
 
 	j, _ := q.Job(job.ID)
 	if j.State != Dead {
 		t.Error("incorrect state:", j.State)
+	}
+}
+
+func TestDispatcher(t *testing.T) {
+	c := newTestClient()
+	q := c.GetQueue("q")
+
+	job, _ := q.Submit(100, nil)
+
+	next := make(chan struct{})
+	lock := sync.Mutex{}
+	dispatcher := dispatcher{
+		Queue:      q,
+		NumWorkers: 1,
+		MaxRetries: 1,
+		Handler: func(job Job) error {
+			next <- struct{}{}
+			lock.Lock()
+			lock.Unlock()
+			return nil
+		},
+	}
+
+	lock.Lock()
+	defer lock.Unlock()
+
+	dispatcher.Run()
+	<-next
+
+	dispatcher.Cancel(0)
+
+	j, _ := q.Job(job.ID)
+
+	if j.State != Dead {
+		t.Error("job was not marked as dead: ", job.State)
+	}
+}
+
+func TestDispatcherCancel_Timeout(t *testing.T) {
+	c := newTestClient()
+	q := c.GetQueue("q")
+
+	job, _ := q.Submit(100, nil)
+
+	next := make(chan struct{})
+	dispatcher := dispatcher{
+		Queue:      q,
+		NumWorkers: 1,
+		MaxRetries: 1,
+		Handler: func(job Job) error {
+			next <- struct{}{}
+			next <- struct{}{}
+			return nil
+		},
+	}
+
+	dispatcher.Run()
+	<-next
+
+	done := make(chan struct{})
+	go func() {
+		<-done
+		dispatcher.Cancel(1 * time.Second)
+		done <- struct{}{}
+	}()
+	done <- struct{}{}
+	<-next
+
+	select {
+	case <-done:
+	case <-time.After(1 * time.Second):
+		t.Fatal("timed out")
+	}
+
+	j, _ := q.Job(job.ID)
+
+	if j.State != Finished {
+		t.Error("job was not marked as finished: ", j.State)
 	}
 }

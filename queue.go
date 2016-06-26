@@ -116,9 +116,10 @@ func (q *Queue) Retry(j *Job, d time.Duration) error {
 	conn := q.client.getConn()
 	defer q.client.putConn(conn)
 
+	j.State = Queued
 	j.DelayedUntil = time.Now().UTC().Add(d)
 
-	if err := q.persistJob(j, conn, "delayed_until"); err != nil {
+	if err := q.persistJob(j, conn, "state", "delayed_until"); err != nil {
 		return err
 	}
 
@@ -129,9 +130,10 @@ func (q *Queue) Finish(j Job) error {
 	conn := q.client.getConn()
 	defer q.client.putConn(conn)
 
+	j.State = Finished
 	j.CompletionTime = time.Now().UTC()
 
-	return q.persistJob(&j, conn, "completion_time")
+	return q.persistJob(&j, conn, "state", "completion_time")
 }
 
 func (q *Queue) Kill(j *Job) error {
@@ -139,7 +141,6 @@ func (q *Queue) Kill(j *Job) error {
 	defer q.client.putConn(conn)
 
 	j.State = Dead
-
 	return q.persistJob(j, conn, "state")
 }
 

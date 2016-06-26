@@ -17,7 +17,7 @@ var DefaultClient = NewClient(nil)
 type Client struct {
 	opts        *Options
 	connPool    sync.Pool
-	dispatchers map[string]dispatcher
+	dispatchers map[string]*dispatcher
 }
 
 type Options struct {
@@ -63,7 +63,7 @@ func NewClient(opts *Options) *Client {
 
 	return &Client{
 		opts:        opts,
-		dispatchers: make(map[string]dispatcher),
+		dispatchers: make(map[string]*dispatcher),
 		connPool: sync.Pool{New: func() interface{} {
 			return opts.ConnFactory()
 		}},
@@ -92,7 +92,7 @@ func (c *Client) GetQueue(name string) *Queue {
 }
 
 func (c *Client) Register(queue string, numWorkers int, f HandlerFunc) {
-	c.dispatchers[queue] = dispatcher{
+	c.dispatchers[queue] = &dispatcher{
 		Queue:         c.GetQueue(queue),
 		NumWorkers:    numWorkers,
 		Handler:       f,
@@ -101,37 +101,59 @@ func (c *Client) Register(queue string, numWorkers int, f HandlerFunc) {
 	}
 }
 
-func (c *Client) Work() func() {
-	ch := make(chan struct{})
-	done := make(chan struct{})
+// Canceller allows the user to cancel all working jobs. If timeout is not set,
+// all currently working jobs will immediately be marked failed.
+type Canceller interface {
+	Cancel()
+	CancelWithTimeout(d time.Duration)
+}
 
-	var stoppers []func()
-	for _, d := range c.dispatchers {
-		stoppers = append(stoppers, d.Run())
+type canceller struct {
+	dispatchers []*dispatcher
+}
+
+func (c *canceller) Cancel() {
+	c.CancelWithTimeout(0)
+}
+
+func (c *canceller) CancelWithTimeout(d time.Duration) {
+	n := len(c.dispatchers)
+	if n == 0 {
+		return
 	}
 
-	go func() {
-		<-ch
-		for _, f := range stoppers {
-			f()
-		}
-		done <- struct{}{}
-	}()
+	done := make(chan struct{}, n)
+	for i := range c.dispatchers {
+		di := c.dispatchers[i]
+		go func() {
+			di.Cancel(d)
+			done <- struct{}{}
+		}()
+	}
 
-	return func() {
-		close(ch)
+	for i := 0; i < n; i++ {
 		<-done
 	}
+}
+
+func (c *Client) Work() Canceller {
+	var dispatchers []*dispatcher
+	for _, d := range c.dispatchers {
+		d.Run()
+		dispatchers = append(dispatchers, d)
+	}
+
+	return &canceller{dispatchers: dispatchers}
 }
 
 func (c *Client) WorkForever() {
 	sig := make(chan os.Signal)
 	signal.Notify(sig, os.Interrupt)
-	stop := c.Work()
+	canceller := c.Work()
 
 	<-sig
 	signal.Stop(sig)
-	stop()
+	canceller.Cancel()
 }
 
 func (c *Client) getConn() Conn {

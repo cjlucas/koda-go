@@ -18,7 +18,7 @@ func Register(queue string, numWorkers int, f HandlerFunc) {
 	DefaultClient.Register(queue, numWorkers, f)
 }
 
-func Work() func() {
+func Work() Canceller {
 	return DefaultClient.Work()
 }
 
