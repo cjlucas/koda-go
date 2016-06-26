@@ -86,7 +86,6 @@ func TestWork(t *testing.T) {
 	})
 
 	stop := client.Work()
-	defer func() { stop <- struct{}{} }()
 
 	select {
 	case <-next:
@@ -95,4 +94,7 @@ func TestWork(t *testing.T) {
 		t.Fatal("worker was not called")
 		return
 	}
+
+	stop <- struct{}{}
+	<-stop
 }

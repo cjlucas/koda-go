@@ -83,7 +83,7 @@ func (c *Client) Register(queue string, numWorkers int, f HandlerFunc) {
 	}
 }
 
-func (c *Client) Work() chan<- struct{} {
+func (c *Client) Work() chan struct{} {
 	ch := make(chan struct{})
 
 	var stoppers []chan<- struct{}
@@ -93,6 +93,7 @@ func (c *Client) Work() chan<- struct{} {
 
 	go func() {
 		<-ch
+		close(ch)
 		for _, c := range stoppers {
 			c <- struct{}{}
 		}
