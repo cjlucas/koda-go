@@ -40,12 +40,20 @@ func TestWork(t *testing.T) {
 
 func TestWorkForever(t *testing.T) {
 	client := newTestClient()
+	q := client.GetQueue("q")
 
 	next := make(chan struct{})
+	client.Register("q", 1, func(job Job) error {
+		next <- struct{}{}
+		return nil
+	})
 
+	job, _ := q.Submit(100, nil)
+
+	done := make(chan struct{})
 	go func() {
 		client.WorkForever()
-		next <- struct{}{}
+		done <- struct{}{}
 	}()
 
 	go func() {
@@ -54,8 +62,16 @@ func TestWorkForever(t *testing.T) {
 	}()
 
 	select {
-	case <-next:
+	case <-done:
 	case <-time.After(1 * time.Second):
 		t.Fatal("timed out")
+	}
+
+	// Allow worker to complete
+	<-next
+
+	j, _ := q.Job(job.ID)
+	if j.State != Queued || j.NumAttempts != 1 {
+		t.Fatal("job should be readded to queue")
 	}
 }

@@ -147,13 +147,13 @@ func (c *Client) Work() Canceller {
 }
 
 func (c *Client) WorkForever() {
-	sig := make(chan os.Signal)
+	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt)
 	canceller := c.Work()
 
 	<-sig
 	signal.Stop(sig)
-	canceller.Cancel()
+	canceller.CancelWithTimeout(0)
 }
 
 func (c *Client) getConn() Conn {
