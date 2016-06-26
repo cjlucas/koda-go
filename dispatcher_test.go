@@ -46,7 +46,7 @@ func TestDispatcherRun(t *testing.T) {
 
 	lock.Lock()
 	stop := dispatcher.Run()
-	defer func() { stop <- struct{}{}; <-stop }()
+	defer stop()
 
 	select {
 	case <-next:
@@ -114,8 +114,7 @@ func TestDispatcherRun_Retry(t *testing.T) {
 		return
 	}
 
-	stop <- struct{}{}
-	<-stop
+	stop()
 
 	j, _ := q.Job(job.ID)
 	if j.State != Dead {

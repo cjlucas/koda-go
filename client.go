@@ -99,24 +99,24 @@ func (c *Client) Register(queue string, numWorkers int, f HandlerFunc) {
 	}
 }
 
-func (c *Client) Work() chan struct{} {
+func (c *Client) Work() func() {
 	ch := make(chan struct{})
 
-	var stoppers []chan struct{}
+	var stoppers []func()
 	for _, d := range c.dispatchers {
 		stoppers = append(stoppers, d.Run())
 	}
 
 	go func() {
 		<-ch
-		close(ch)
-		for _, c := range stoppers {
-			c <- struct{}{}
-			<-c
+		for _, f := range stoppers {
+			f()
 		}
 	}()
 
-	return ch
+	return func() {
+		close(ch)
+	}
 }
 
 func (c *Client) getConn() Conn {

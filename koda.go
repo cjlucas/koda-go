@@ -18,6 +18,6 @@ func Register(queue string, numWorkers int, f HandlerFunc) {
 	DefaultClient.Register(queue, numWorkers, f)
 }
 
-func Work() chan<- struct{} {
+func Work() func() {
 	return DefaultClient.Work()
 }

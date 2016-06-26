@@ -34,6 +34,5 @@ func TestWork(t *testing.T) {
 		return
 	}
 
-	stop <- struct{}{}
-	<-stop
+	stop()
 }
