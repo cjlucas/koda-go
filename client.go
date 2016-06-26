@@ -83,6 +83,24 @@ func (c *Client) Register(queue string, numWorkers int, f HandlerFunc) {
 	}
 }
 
+func (c *Client) Work() chan<- struct{} {
+	ch := make(chan struct{})
+
+	var stoppers []chan<- struct{}
+	for _, d := range c.dispatchers {
+		stoppers = append(stoppers, d.Run())
+	}
+
+	go func() {
+		<-ch
+		for _, c := range stoppers {
+			c <- struct{}{}
+		}
+	}()
+
+	return ch
+}
+
 func (c *Client) getConn() Conn {
 	return c.connPool.Get().(Conn)
 }

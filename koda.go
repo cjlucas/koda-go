@@ -13,3 +13,11 @@ func Submit(queue string, priority int, payload interface{}) (*Job, error) {
 func SubmitDelayed(queue string, d time.Duration, payload interface{}) (*Job, error) {
 	return DefaultClient.GetQueue(queue).SubmitDelayed(d, payload)
 }
+
+func Register(queue string, numWorkers int, f HandlerFunc) {
+	DefaultClient.Register(queue, numWorkers, f)
+}
+
+func Work() chan<- struct{} {
+	return DefaultClient.Work()
+}

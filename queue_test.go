@@ -3,6 +3,7 @@ package koda
 import (
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestSubmit(t *testing.T) {
@@ -69,5 +70,29 @@ func TestWait(t *testing.T) {
 
 	if job.State != Working {
 		t.Errorf("incorrect state: %s", job.State)
+	}
+}
+
+func TestWork(t *testing.T) {
+	client := newTestClient()
+	q := client.GetQueue("q")
+
+	q.Submit(100, nil)
+
+	next := make(chan struct{})
+	client.Register("q", 1, func(job Job) error {
+		next <- struct{}{}
+		return nil
+	})
+
+	stop := client.Work()
+	defer func() { stop <- struct{}{} }()
+
+	select {
+	case <-next:
+		break
+	case <-time.After(1 * time.Second):
+		t.Fatal("worker was not called")
+		return
 	}
 }
