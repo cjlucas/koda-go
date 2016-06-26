@@ -182,4 +182,8 @@ func (c *Conn) ZRangeByScore(key string, min, max float64, minIncl, maxIncl bool
 	return members, nil
 }
 
+func (c *Conn) Subscribe(channel string) (<-chan string, error) {
+	return nil, nil
+}
+
 func (c *Conn) Close() error { return nil }

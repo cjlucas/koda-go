@@ -3,6 +3,7 @@ package koda
 import (
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"gopkg.in/redis.v3"
@@ -12,7 +13,9 @@ var NilError = redis.Nil
 
 // GoRedisAdapter is an adapter for the redis.v3 library
 type GoRedisAdapter struct {
-	R *redis.Client
+	R                 *redis.Client
+	subscriptions     map[string][]chan string
+	subscriptionsLock sync.RWMutex
 }
 
 func (r *GoRedisAdapter) Incr(key string) (int, error) {
@@ -78,6 +81,32 @@ func (r *GoRedisAdapter) Scan(cursor int, match string, count int) (int, []strin
 	cmd := r.R.Scan(int64(cursor), match, int64(count))
 	offset, results := cmd.Val()
 	return int(offset), results, cmd.Err()
+}
+
+func (r *GoRedisAdapter) Subscribe(channel string) (<-chan string, error) {
+	r.subscriptionsLock.Lock()
+	defer r.subscriptionsLock.Unlock()
+	if r.subscriptions == nil {
+		r.subscriptions = make(map[string][]chan string)
+	}
+	ch := make(chan string)
+	r.subscriptions[channel] = append(r.subscriptions[channel], ch)
+
+	ps, err := r.R.Subscribe(channel)
+	if err != nil {
+		return nil, err
+	}
+
+	go func() {
+		msg, _ := ps.ReceiveMessage()
+		r.subscriptionsLock.Lock()
+		for i := range r.subscriptions[channel] {
+			r.subscriptions[channel][i] <- msg.Payload
+		}
+		r.subscriptionsLock.Unlock()
+	}()
+
+	return ch, nil
 }
 
 func (r *GoRedisAdapter) Close() error {

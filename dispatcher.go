@@ -38,6 +38,8 @@ func (d *dispatcher) Run() chan<- struct{} {
 						} else {
 							d.Queue.Kill(j)
 						}
+					} else {
+						j.Finish()
 					}
 					slots <- struct{}{}
 				}()

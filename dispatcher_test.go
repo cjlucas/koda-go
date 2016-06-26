@@ -33,7 +33,7 @@ func TestDispatcherRun(t *testing.T) {
 			if hits == N {
 				next <- struct{}{}
 			}
-			// TODO: you also want to assert this function was actually called N times
+
 			lock.Lock()
 			lock.Unlock()
 			return nil
