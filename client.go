@@ -68,12 +68,23 @@ func NewClient(opts *Options) *Client {
 	}
 }
 
-// TODO: Rename to Queue
-func (c *Client) GetQueue(name string) *Queue {
-	return &Queue{
-		name:   name,
+func (c *Client) newQueue(name string) *Queue {
+	q := &Queue{
+		Name:   name,
 		client: c,
 	}
+
+	q.queueKeys = make([]string, maxPriority-minPriority+1)
+	for i := minPriority; i <= maxPriority; i++ {
+		q.queueKeys[i] = q.key(i)
+	}
+
+	return q
+}
+
+// TODO: Rename to Queue
+func (c *Client) GetQueue(name string) *Queue {
+	return c.newQueue(name)
 }
 
 func (c *Client) Register(queue string, numWorkers int, f HandlerFunc) {

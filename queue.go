@@ -11,8 +11,9 @@ const minPriority = 0
 const maxPriority = 100
 
 type Queue struct {
-	name   string
-	client *Client
+	Name      string
+	client    *Client
+	queueKeys []string
 }
 
 func timeAsFloat(t time.Time) float64 {
@@ -34,11 +35,11 @@ func (q *Queue) persistNewJob(j *Job, c Conn) error {
 }
 
 func (q *Queue) key(priority int) string {
-	return q.client.buildKey("queue", q.name, strconv.Itoa(priority))
+	return q.client.buildKey("queue", q.Name, strconv.Itoa(priority))
 }
 
 func (q *Queue) delayedKey() string {
-	return q.client.buildKey("delayed_queue", q.name)
+	return q.client.buildKey("delayed_queue", q.Name)
 }
 
 func (q *Queue) jobKey(id int) string {
@@ -204,12 +205,7 @@ func (q *Queue) Wait() (Job, error) {
 	conn := q.client.getConn()
 	defer q.client.putConn(conn)
 
-	queues := make([]string, maxPriority-minPriority+1)
-	for i := minPriority; i <= maxPriority; i++ {
-		queues[i] = q.key(i)
-	}
-
-	jobKey, err := q.wait(conn, queues...)
+	jobKey, err := q.wait(conn, q.queueKeys...)
 	if jobKey == "" {
 		return Job{}, errors.New("not found")
 	}
