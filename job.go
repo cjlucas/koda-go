@@ -87,19 +87,6 @@ func (u *jobUnmarshaller) atoi(s string) int {
 	return val
 }
 
-func (u *jobUnmarshaller) atob(s string) bool {
-	if u.Err != nil || s == "" {
-		return false
-	}
-
-	val, err := strconv.ParseBool(s)
-	if err != nil {
-		u.Err = err
-	}
-
-	return val
-}
-
 func (u *jobUnmarshaller) parseJSON(s string) interface{} {
 	if u.Err != nil || s == "" {
 		return nil
@@ -151,11 +138,4 @@ func unmarshalJob(c Conn, key string) (*Job, error) {
 	}
 
 	return &job, nil
-}
-
-func btoi(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
 }
