@@ -25,16 +25,17 @@ func TestDispatcherRun(t *testing.T) {
 
 	// register N workers to work that queue
 	next := make(chan struct{})
-	lock := sync.Mutex{}
+	defer close(next)
 	hits := make(chan struct{}, N+1)
 	defer close(hits)
 
+	lock := sync.Mutex{}
 	dispatcher := dispatcher{
 		Queue:      q,
 		NumWorkers: N,
 		Handler: func(job Job) error {
 			hits <- struct{}{}
-			if len(hits) == N {
+			if len(hits) >= N {
 				next <- struct{}{}
 			}
 
@@ -81,6 +82,9 @@ func TestDispatcherRun(t *testing.T) {
 	if jobs[N].State != Queued {
 		t.Error("last job is not queued:", jobs[N].State)
 	}
+
+	// drain last job from dispatcher
+	<-next
 }
 
 func TestDispatcherRun_Retry(t *testing.T) {
