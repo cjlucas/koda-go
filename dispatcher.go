@@ -76,7 +76,6 @@ type dispatcher struct {
 	RetryInterval time.Duration
 
 	cancel     chan struct{}
-	done       chan struct{}
 	slots      chan struct{}
 	jobManager jobManager
 }
@@ -100,8 +99,8 @@ func (d *dispatcher) Cancel(timeout time.Duration) {
 		}
 	}
 
-	close(d.cancel)
-	<-d.done
+	d.cancel <- struct{}{}
+	<-d.cancel
 
 	d.jobManager.FailAllJobs()
 }
@@ -113,8 +112,6 @@ func (d *dispatcher) Run() {
 	}
 
 	d.cancel = make(chan struct{})
-	d.done = make(chan struct{})
-
 	d.jobManager = jobManager{
 		Queue:         d.Queue,
 		jobs:          make(map[int]Job),
@@ -126,7 +123,7 @@ func (d *dispatcher) Run() {
 		for {
 			select {
 			case <-d.cancel:
-				close(d.done)
+				close(d.cancel)
 				return
 			case <-d.slots:
 				job, err := d.Queue.Wait()
