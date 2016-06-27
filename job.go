@@ -46,7 +46,7 @@ type Job struct {
 	NumAttempts    int
 }
 
-func (j *Job) asHash() map[string]string {
+func (j *Job) hash() (map[string]string, error) {
 	hash := map[string]string{
 		"id":              strconv.Itoa(int(j.ID)),
 		"state":           strconv.Itoa(int(j.State)),
@@ -57,13 +57,13 @@ func (j *Job) asHash() map[string]string {
 		"num_attempts":    strconv.Itoa(int(j.NumAttempts)),
 	}
 
-	if jsonPayload, err := json.Marshal(j.Payload); err == nil {
-		hash["payload"] = string(jsonPayload)
-	} else {
-		fmt.Println("ERROR", err)
+	jsonPayload, err := json.Marshal(j.Payload)
+	if err != nil {
+		return nil, err
 	}
 
-	return hash
+	hash["payload"] = string(jsonPayload)
+	return hash, nil
 }
 
 func (j *Job) UnmarshalPayload(v interface{}) error {

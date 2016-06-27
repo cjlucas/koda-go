@@ -52,7 +52,10 @@ func (q *Queue) incrJobID(c Conn) (int, error) {
 
 func (q *Queue) persistJob(j *Job, c Conn, fields ...string) error {
 	jobKey := q.jobKey(j.ID)
-	hash := j.asHash()
+	hash, err := j.hash()
+	if err != nil {
+		return err
+	}
 
 	if len(fields) == 0 {
 		for k := range hash {
