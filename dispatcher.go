@@ -7,6 +7,67 @@ import (
 
 type HandlerFunc func(j Job) error
 
+// jobManager handles in-flight jobs being processed by the dispatcher. Its main
+// purpose is to handle data races during cancellation where both the cancellation
+// goroutine and the main run goroutine may attempt to update the state of a single job
+type jobManager struct {
+	Queue         *Queue
+	MaxRetries    int
+	RetryInterval time.Duration
+	jobs          map[int]Job
+	jobsLock      sync.Mutex
+}
+
+func (m *jobManager) Add(job Job) {
+	m.jobsLock.Lock()
+	defer m.jobsLock.Unlock()
+
+	m.jobs[job.ID] = job
+}
+
+func (m *jobManager) Success(job Job) {
+	m.jobsLock.Lock()
+	defer m.jobsLock.Unlock()
+
+	if j, ok := m.jobs[job.ID]; ok {
+		m.Queue.Finish(j)
+		delete(m.jobs, job.ID)
+	}
+}
+
+func (m *jobManager) fail(job Job) {
+	if j, ok := m.jobs[job.ID]; ok {
+		if job.NumAttempts < m.MaxRetries {
+			m.Queue.Retry(&j, m.RetryInterval)
+		} else {
+			m.Queue.Kill(&j)
+		}
+
+		delete(m.jobs, job.ID)
+	}
+}
+
+func (m *jobManager) Fail(job Job) {
+	m.jobsLock.Lock()
+	defer m.jobsLock.Unlock()
+
+	m.fail(job)
+}
+
+func (m *jobManager) FailAllJobs() {
+	m.jobsLock.Lock()
+	defer m.jobsLock.Unlock()
+
+	var jobs []Job
+	for _, job := range m.jobs {
+		jobs = append(jobs, job)
+	}
+
+	for _, job := range jobs {
+		m.fail(job)
+	}
+}
+
 type dispatcher struct {
 	Queue      *Queue
 	NumWorkers int
@@ -17,8 +78,7 @@ type dispatcher struct {
 	done   chan struct{}
 	slots  chan struct{}
 
-	jobs     map[int]Job
-	jobsLock sync.Mutex
+	jobManager jobManager
 
 	RetryInterval time.Duration
 }
@@ -45,20 +105,7 @@ func (d *dispatcher) Cancel(timeout time.Duration) {
 	close(d.cancel)
 	<-d.done
 
-	d.jobsLock.Lock()
-	for _, job := range d.jobs {
-		d.jobFailed(job)
-		delete(d.jobs, job.ID)
-	}
-	d.jobsLock.Unlock()
-}
-
-func (d *dispatcher) jobFailed(job Job) {
-	if job.NumAttempts < d.MaxRetries {
-		d.Queue.Retry(&job, d.RetryInterval)
-	} else {
-		d.Queue.Kill(&job)
-	}
+	d.jobManager.FailAllJobs()
 }
 
 func (d *dispatcher) Run() {
@@ -67,9 +114,15 @@ func (d *dispatcher) Run() {
 		d.slots <- struct{}{}
 	}
 
-	d.jobs = make(map[int]Job)
 	d.cancel = make(chan struct{})
 	d.done = make(chan struct{})
+
+	d.jobManager = jobManager{
+		Queue:         d.Queue,
+		jobs:          make(map[int]Job),
+		MaxRetries:    d.MaxRetries,
+		RetryInterval: d.RetryInterval,
+	}
 
 	go func() {
 		for {
@@ -84,21 +137,15 @@ func (d *dispatcher) Run() {
 					break
 				}
 
-				d.jobsLock.Lock()
-				d.jobs[job.ID] = job
-				d.jobsLock.Unlock()
+				d.jobManager.Add(job)
 
 				go func() {
 					err := d.Handler(job)
 					if err != nil {
-						d.jobFailed(job)
+						d.jobManager.Fail(job)
 					} else {
-						d.Queue.Finish(job)
+						d.jobManager.Success(job)
 					}
-
-					d.jobsLock.Lock()
-					delete(d.jobs, job.ID)
-					d.jobsLock.Unlock()
 
 					// Don't put slot back into pool until job status has been updated
 					d.slots <- struct{}{}

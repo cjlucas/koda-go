@@ -71,12 +71,6 @@ func TestWorkForever(t *testing.T) {
 	// Allow worker to complete
 	<-next
 
-	// TODO: race condition: job is being marked as failed, when
-	// Cancel times out, and the worker is unblocked, the job is allowed
-	// to finish and is marked as complete. The solution would be to
-	// check if jobID is still in the map if in-flight jobs. If it is not,
-	// That means another goroutine has already updated it's job state.
-	// Ideally, this logic would be moved to a seperate data structure.
 	j, _ := q.Job(job.ID)
 	if j.State != Queued || j.NumAttempts != 1 {
 		fmt.Println(j)
