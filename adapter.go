@@ -52,7 +52,7 @@ func (r *GoRedisAdapter) ZAddNX(key string, score float64, member string) (int, 
 
 func (r *GoRedisAdapter) ZPopByScore(key string, min, max float64, minIncl, maxIncl bool, offset, count int) ([]string, error) {
 	script := `
-	local res = redis.call('ZRANGEBYSCORE', KEYS[1], ARGS[1], ARGS[2], 'LIMIT', ARGS[3], ARGS[4])
+	local res = redis.call('ZRANGEBYSCORE', KEYS[1], ARGV[1], ARGV[2], 'LIMIT', ARGV[3], ARGV[4])
 	for i=1,#res do
 		redis.call('ZREM', KEYS[1], res[i])
 	end
@@ -80,7 +80,13 @@ func (r *GoRedisAdapter) ZPopByScore(key string, min, max float64, minIncl, maxI
 		return nil, cmd.Err()
 	}
 
-	return cmd.Val().([]string), nil
+	var members []string
+	val := cmd.Val().([]interface{})
+	for i := range val {
+		members = append(members, val[i].(string))
+	}
+
+	return members, nil
 }
 
 func (r *GoRedisAdapter) Scan(cursor int, match string, count int) (int, []string, error) {
