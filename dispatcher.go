@@ -69,18 +69,16 @@ func (m *jobManager) FailAllJobs() {
 }
 
 type dispatcher struct {
-	Queue      *Queue
-	NumWorkers int
-	Handler    HandlerFunc
-	MaxRetries int
-
-	cancel chan struct{}
-	done   chan struct{}
-	slots  chan struct{}
-
-	jobManager jobManager
-
+	Queue         *Queue
+	NumWorkers    int
+	Handler       HandlerFunc
+	MaxRetries    int
 	RetryInterval time.Duration
+
+	cancel     chan struct{}
+	done       chan struct{}
+	slots      chan struct{}
+	jobManager jobManager
 }
 
 // Cancel all running jobs. If timeout is set, will block until
