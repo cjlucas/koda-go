@@ -50,12 +50,14 @@ func (r *GoRedisAdapter) ZAddNX(key string, score float64, member string) (int, 
 	return int(cmd.Val()), cmd.Err()
 }
 
-func (r *GoRedisAdapter) ZRem(key string, members ...string) (int, error) {
-	cmd := r.R.ZRem(key, members...)
-	return int(cmd.Val()), cmd.Err()
-}
-
-func (r *GoRedisAdapter) ZRangeByScore(key string, min, max float64, minIncl, maxIncl bool, offset, count int) ([]string, error) {
+func (r *GoRedisAdapter) ZPopByScore(key string, min, max float64, minIncl, maxIncl bool, offset, count int) ([]string, error) {
+	script := `
+	local res = redis.call('ZRANGEBYSCORE', KEYS[1], ARGS[1], ARGS[2], 'LIMIT', ARGS[3], ARGS[4])
+	for i=1,#res do
+		redis.call('ZREM', KEYS[1], res[i])
+	end
+	return res
+	`
 	var rangeStr [2]string
 	ranges := []float64{min, max}
 	inclusive := []bool{minIncl, maxIncl}
@@ -67,14 +69,18 @@ func (r *GoRedisAdapter) ZRangeByScore(key string, min, max float64, minIncl, ma
 		}
 	}
 
-	cmd := r.R.ZRangeByScore(key, redis.ZRangeByScore{
-		Min:    rangeStr[0],
-		Max:    rangeStr[1],
-		Offset: int64(offset),
-		Count:  int64(count),
+	cmd := r.R.Eval(script, []string{key}, []string{
+		rangeStr[0],
+		rangeStr[1],
+		strconv.Itoa(offset),
+		strconv.Itoa(count),
 	})
 
-	return cmd.Val(), cmd.Err()
+	if cmd.Err() != nil {
+		return nil, cmd.Err()
+	}
+
+	return cmd.Val().([]string), nil
 }
 
 func (r *GoRedisAdapter) Scan(cursor int, match string, count int) (int, []string, error) {

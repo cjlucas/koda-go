@@ -115,25 +115,8 @@ func (c *Conn) ZAddNX(key string, score float64, member string) (int, error) {
 	c.sets[key][member] = score
 	return 1, nil
 }
-func (c *Conn) ZRem(key string, members ...string) (int, error) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
 
-	if _, ok := c.sets[key]; !ok {
-		return 0, nil
-	}
-
-	nRemoved := 0
-	for _, m := range members {
-		if _, ok := c.sets[key][m]; ok {
-			delete(c.sets[key], m)
-			nRemoved++
-		}
-	}
-
-	return nRemoved, nil
-}
-func (c *Conn) ZRangeByScore(key string, min, max float64, minIncl, maxIncl bool, offset, count int) ([]string, error) {
+func (c *Conn) ZPopByScore(key string, min, max float64, minIncl, maxIncl bool, offset, count int) ([]string, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -179,7 +162,9 @@ func (c *Conn) ZRangeByScore(key string, min, max float64, minIncl, maxIncl bool
 
 	var members []string
 	for i := range items {
-		members = append(members, items[i].Member)
+		member := items[i].Member
+		members = append(members, member)
+		delete(c.sets[key], member)
 	}
 
 	return members, nil

@@ -156,17 +156,8 @@ func (q *Queue) Job(id int) (Job, error) {
 }
 
 func (q *Queue) wait(conn Conn, queues ...string) (string, error) {
-	results, err := conn.BLPop(1*time.Second, queues...)
-	if err != nil && err != NilError {
-		return "", err
-	}
-
-	if len(results) > 1 {
-		return results[1], nil
-	}
-
 	delayedQueueKey := q.delayedKey()
-	results, err = conn.ZRangeByScore(
+	results, err := conn.ZPopByScore(
 		delayedQueueKey,
 		0,
 		timeAsFloat(time.Now().UTC()),
@@ -180,26 +171,16 @@ func (q *Queue) wait(conn Conn, queues ...string) (string, error) {
 	}
 
 	if len(results) > 0 {
-		jobKey := results[0]
-		numRemoved, err := conn.ZRem(delayedQueueKey, jobKey)
-		if err != nil {
-			return "", err
-		}
+		return results[0], nil
+	}
 
-		// NOTE: To prevent a race condition in which multiple clients
-		// would get the same job key via ZRangeByScore, as the clients
-		// race to remove the job key, the "winner" is the one to successfully
-		// remove the key, all other clients should continue waiting for a job
-		//
-		// Although this solution is logically correct, it could cause
-		// thrashing if meeting the race condition is a common occurance.
-		// So, an alternate solution may be necessary. Of which a Lua
-		// script that performs the zrangebyscore and zrem atomically
-		if numRemoved == 0 {
-			return "", errors.New("ZRem removed zero keys")
-		}
+	results, err = conn.BLPop(1*time.Second, queues...)
+	if err != nil && err != NilError {
+		return "", err
+	}
 
-		return jobKey, nil
+	if len(results) > 1 {
+		return results[1], nil
 	}
 
 	return "", nil

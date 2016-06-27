@@ -19,8 +19,8 @@ type Conn interface {
 	RPush(key string, value ...string) (int, error)
 	BLPop(timeout time.Duration, keys ...string) ([]string, error)
 	ZAddNX(key string, score float64, member string) (int, error)
-	ZRem(key string, members ...string) (int, error)
-	ZRangeByScore(key string, min, max float64, minIncl, maxIncl bool, offset, count int) ([]string, error)
+	// ZPopByScore has the same interface as ZRANGEBYSCORE, but also removes each member
+	ZPopByScore(key string, min, max float64, minIncl, maxIncl bool, offset, count int) ([]string, error)
 	Subscribe(channel string) (<-chan string, error)
 	Close() error
 }
