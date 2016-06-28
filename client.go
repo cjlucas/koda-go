@@ -86,14 +86,13 @@ func (c *Client) newQueue(name string) *Queue {
 	return q
 }
 
-// TODO: Rename to Queue
-func (c *Client) GetQueue(name string) *Queue {
+func (c *Client) Queue(name string) *Queue {
 	return c.newQueue(name)
 }
 
 func (c *Client) Register(queue string, numWorkers int, f HandlerFunc) {
 	c.dispatchers[queue] = &dispatcher{
-		Queue:         c.GetQueue(queue),
+		Queue:         c.Queue(queue),
 		NumWorkers:    numWorkers,
 		Handler:       f,
 		MaxRetries:    5,

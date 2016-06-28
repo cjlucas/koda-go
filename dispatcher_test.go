@@ -13,7 +13,7 @@ func TestDispatcherRun(t *testing.T) {
 	c := newTestClient()
 	jobIDs := make([]int, N+1)
 
-	q := c.GetQueue("q")
+	q := c.Queue("q")
 	for i := 0; i < N+1; i++ {
 		job, err := q.Submit(100, nil)
 		if err != nil {
@@ -89,7 +89,7 @@ func TestDispatcherRun(t *testing.T) {
 
 func TestDispatcherRun_Retry(t *testing.T) {
 	c := newTestClient()
-	q := c.GetQueue("q")
+	q := c.Queue("q")
 
 	job, _ := q.Submit(100, nil)
 
@@ -128,7 +128,7 @@ func TestDispatcherRun_Retry(t *testing.T) {
 
 func TestDispatcher(t *testing.T) {
 	c := newTestClient()
-	q := c.GetQueue("q")
+	q := c.Queue("q")
 
 	job, _ := q.Submit(100, nil)
 
@@ -163,7 +163,7 @@ func TestDispatcher(t *testing.T) {
 
 func TestDispatcherCancel_Timeout(t *testing.T) {
 	c := newTestClient()
-	q := c.GetQueue("q")
+	q := c.Queue("q")
 
 	job, _ := q.Submit(100, nil)
 

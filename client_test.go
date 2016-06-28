@@ -8,16 +8,16 @@ import (
 	"time"
 )
 
-func TestGetQueue(t *testing.T) {
+func TestQueue(t *testing.T) {
 	c := newTestClient()
-	if q := c.GetQueue("q"); q == nil {
+	if q := c.Queue("q"); q == nil {
 		t.Error("Queue was nil")
 	}
 }
 
 func TestWork(t *testing.T) {
 	client := newTestClient()
-	q := client.GetQueue("q")
+	q := client.Queue("q")
 
 	q.Submit(100, nil)
 
@@ -41,7 +41,7 @@ func TestWork(t *testing.T) {
 
 func TestWorkForever(t *testing.T) {
 	client := newTestClient()
-	q := client.GetQueue("q")
+	q := client.Queue("q")
 
 	next := make(chan struct{})
 	client.Register("q", 1, func(job Job) error {
