@@ -15,7 +15,7 @@ func TestDispatcherRun(t *testing.T) {
 
 	q := c.Queue("q")
 	for i := 0; i < N+1; i++ {
-		job, err := q.Submit(100, nil)
+		job, err := c.Submit(*q, 100, nil)
 		if err != nil {
 			t.Fatal("failed to add job")
 			return
@@ -91,7 +91,7 @@ func TestDispatcherRun_Retry(t *testing.T) {
 	c := newTestClient()
 	q := c.Queue("q")
 
-	job, _ := q.Submit(100, nil)
+	job, _ := c.Submit(*q, 100, nil)
 
 	n := 5
 	hits := 0
@@ -130,7 +130,7 @@ func TestDispatcher(t *testing.T) {
 	c := newTestClient()
 	q := c.Queue("q")
 
-	job, _ := q.Submit(100, nil)
+	job, _ := c.Submit(*q, 100, nil)
 
 	next := make(chan struct{})
 	lock := sync.Mutex{}
@@ -165,7 +165,7 @@ func TestDispatcherCancel_Timeout(t *testing.T) {
 	c := newTestClient()
 	q := c.Queue("q")
 
-	job, _ := q.Submit(100, nil)
+	job, _ := c.Submit(*q, 100, nil)
 
 	next := make(chan struct{})
 	dispatcher := dispatcher{

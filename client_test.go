@@ -19,7 +19,7 @@ func TestWork(t *testing.T) {
 	client := newTestClient()
 	q := client.Queue("q")
 
-	q.Submit(100, nil)
+	client.Submit(*q, 100, nil)
 
 	next := make(chan struct{})
 	client.Register("q", 1, func(job Job) error {
@@ -49,7 +49,7 @@ func TestWorkForever(t *testing.T) {
 		return nil
 	})
 
-	job, _ := q.Submit(100, nil)
+	job, _ := client.Submit(*q, 100, nil)
 
 	done := make(chan struct{})
 	go func() {

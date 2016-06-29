@@ -54,11 +54,11 @@ func Configure(opts *Options) {
 }
 
 func Submit(queue string, priority int, payload interface{}) (*Job, error) {
-	return DefaultClient.Queue(queue).Submit(priority, payload)
+	return DefaultClient.Submit(Queue{Name: queue}, priority, payload)
 }
 
 func SubmitDelayed(queue string, d time.Duration, payload interface{}) (*Job, error) {
-	return DefaultClient.Queue(queue).SubmitDelayed(d, payload)
+	return DefaultClient.SubmitDelayed(Queue{Name: queue}, d, payload)
 }
 
 func Register(queue string, numWorkers int, f HandlerFunc) {
