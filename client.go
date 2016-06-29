@@ -1,6 +1,8 @@
 package koda
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"os/signal"
 	"strconv"
@@ -179,6 +181,63 @@ func (c *Client) WorkForever() {
 	<-sig
 	signal.Stop(sig)
 	canceller.CancelWithTimeout(0)
+}
+
+func (c *Client) popJob(conn Conn, delayedQueue string, priorityQueues ...string) (string, error) {
+	delayedQueueKey := c.delayedQueueKey(delayedQueue)
+	results, err := conn.ZPopByScore(
+		delayedQueueKey,
+		0,
+		timeAsFloat(time.Now().UTC()),
+		true,
+		true,
+		0,
+		1)
+
+	if err != nil {
+		return "", err
+	}
+
+	if len(results) > 0 {
+		return results[0], nil
+	}
+
+	results, err = conn.BLPop(1*time.Second, priorityQueues...)
+	if err != nil && err != NilError {
+		return "", err
+	}
+
+	if len(results) > 1 {
+		return results[1], nil
+	}
+
+	return "", nil
+}
+
+func (c *Client) wait(queue Queue) (Job, error) {
+	conn := c.getConn()
+	defer c.putConn(conn)
+
+	jobKey, err := c.popJob(conn, c.delayedQueueKey(queue.Name), queue.queueKeys...)
+	if jobKey == "" {
+		return Job{}, errors.New("not found")
+	}
+	if err != nil {
+		return Job{}, err
+	}
+
+	j, err := unmarshalJob(conn, jobKey)
+	if err != nil {
+		fmt.Println("error while unmarshaling job", err)
+		return Job{}, err
+	}
+
+	j.State = Working
+	j.NumAttempts++
+
+	c.persistJob(j, conn, "state", "num_attempts")
+
+	return *j, nil
 }
 
 func (c *Client) getConn() Conn {
