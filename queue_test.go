@@ -47,7 +47,7 @@ func TestSubmit(t *testing.T) {
 			}
 		}
 
-		j, err := q.Job(job.ID)
+		j, err := client.Job(job.ID)
 		if err != nil {
 			t.Fatal(err)
 		}

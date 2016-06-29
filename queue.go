@@ -47,14 +47,6 @@ func (q *Queue) Kill(j *Job) error {
 	return q.client.persistJob(j, conn, "state")
 }
 
-func (q *Queue) Job(id int) (Job, error) {
-	c := q.client.getConn()
-	defer q.client.putConn(c)
-
-	job, err := unmarshalJob(c, q.client.jobKey(id))
-	return *job, err
-}
-
 func (q *Queue) wait(conn Conn, queues ...string) (string, error) {
 	delayedQueueKey := q.client.delayedQueueKey(q.Name)
 	results, err := conn.ZPopByScore(

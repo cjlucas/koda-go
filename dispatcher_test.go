@@ -60,7 +60,7 @@ func TestDispatcherRun(t *testing.T) {
 	// snapshot jobs
 	jobs := make([]Job, len(jobIDs))
 	for i, id := range jobIDs {
-		job, err := q.Job(id)
+		job, err := c.Job(id)
 		if err != nil {
 			t.Fatal("could not get job")
 			return
@@ -120,7 +120,7 @@ func TestDispatcherRun_Retry(t *testing.T) {
 
 	dispatcher.Cancel(0)
 
-	j, _ := q.Job(job.ID)
+	j, _ := c.Job(job.ID)
 	if j.State != Dead {
 		t.Error("incorrect state:", j.State)
 	}
@@ -154,7 +154,7 @@ func TestDispatcher(t *testing.T) {
 
 	dispatcher.Cancel(0)
 
-	j, _ := q.Job(job.ID)
+	j, _ := c.Job(job.ID)
 
 	if j.State != Dead {
 		t.Error("job was not marked as dead: ", job.State)
@@ -197,7 +197,7 @@ func TestDispatcherCancel_Timeout(t *testing.T) {
 		t.Fatal("timed out")
 	}
 
-	j, _ := q.Job(job.ID)
+	j, _ := c.Job(job.ID)
 
 	if j.State != Finished {
 		t.Error("job was not marked as finished: ", j.State)

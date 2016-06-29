@@ -39,6 +39,14 @@ func (c *Client) newQueue(name string) *Queue {
 	return q
 }
 
+func (c *Client) Job(id int) (Job, error) {
+	conn := c.getConn()
+	defer c.putConn(conn)
+
+	job, err := unmarshalJob(conn, c.jobKey(id))
+	return *job, err
+}
+
 func (c *Client) Queue(name string) *Queue {
 	return c.newQueue(name)
 }

@@ -71,7 +71,7 @@ func TestWorkForever(t *testing.T) {
 	// Allow worker to complete
 	<-next
 
-	j, _ := q.Job(job.ID)
+	j, _ := client.Job(job.ID)
 	if j.State != Queued || j.NumAttempts != 1 {
 		fmt.Println(j)
 		t.Fatal("job should be readded to queue")
