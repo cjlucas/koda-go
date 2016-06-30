@@ -11,11 +11,10 @@ type HandlerFunc func(j Job) error
 // purpose is to handle data races during cancellation where both the cancellation
 // goroutine and the main run goroutine may attempt to update the state of a single job
 type jobManager struct {
-	Queue         *Queue
-	MaxRetries    int
-	RetryInterval time.Duration
-	jobs          map[int]Job
-	jobsLock      sync.Mutex
+	Queue    Queue
+	c        *Client
+	jobs     map[int]Job
+	jobsLock sync.Mutex
 }
 
 func (m *jobManager) Add(job Job) {
@@ -30,17 +29,17 @@ func (m *jobManager) Success(job Job) {
 	defer m.jobsLock.Unlock()
 
 	if j, ok := m.jobs[job.ID]; ok {
-		m.Queue.Finish(j)
+		m.c.finish(&j)
 		delete(m.jobs, job.ID)
 	}
 }
 
 func (m *jobManager) fail(job Job) {
 	if j, ok := m.jobs[job.ID]; ok {
-		if job.NumAttempts < m.MaxRetries {
-			m.Queue.Retry(&j, m.RetryInterval)
+		if job.NumAttempts < m.Queue.MaxAttempts {
+			m.c.retry(&j, m.Queue)
 		} else {
-			m.Queue.Kill(&j)
+			m.c.kill(&j)
 		}
 
 		delete(m.jobs, job.ID)
@@ -69,11 +68,9 @@ func (m *jobManager) FailAllJobs() {
 }
 
 type dispatcher struct {
-	Queue         *Queue
-	NumWorkers    int
-	Handler       HandlerFunc
-	MaxRetries    int
-	RetryInterval time.Duration
+	Queue   Queue
+	Handler HandlerFunc
+	client  *Client
 
 	cancel     chan struct{}
 	slots      chan struct{}
@@ -87,7 +84,7 @@ func (d *dispatcher) Cancel(timeout time.Duration) {
 	if timeout > 0 {
 		done := make(chan struct{})
 		go func() {
-			for i := 0; i < d.NumWorkers; i++ {
+			for i := 0; i < d.Queue.NumWorkers; i++ {
 				<-d.slots
 			}
 			done <- struct{}{}
@@ -106,17 +103,16 @@ func (d *dispatcher) Cancel(timeout time.Duration) {
 }
 
 func (d *dispatcher) Run() {
-	d.slots = make(chan struct{}, d.NumWorkers)
-	for i := 0; i < d.NumWorkers; i++ {
+	d.slots = make(chan struct{}, d.Queue.NumWorkers)
+	for i := 0; i < d.Queue.NumWorkers; i++ {
 		d.slots <- struct{}{}
 	}
 
 	d.cancel = make(chan struct{})
 	d.jobManager = jobManager{
-		Queue:         d.Queue,
-		jobs:          make(map[int]Job),
-		MaxRetries:    d.MaxRetries,
-		RetryInterval: d.RetryInterval,
+		Queue: d.Queue,
+		c:     d.client,
+		jobs:  make(map[int]Job),
 	}
 
 	go func() {
@@ -126,7 +122,7 @@ func (d *dispatcher) Run() {
 				close(d.cancel)
 				return
 			case <-d.slots:
-				job, err := d.Queue.Wait()
+				job, err := d.client.wait(d.Queue)
 				if job.ID == 0 || err != nil {
 					d.slots <- struct{}{}
 					break

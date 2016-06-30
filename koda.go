@@ -41,8 +41,7 @@ func NewClient(opts *Options) *Client {
 	}
 
 	return &Client{
-		opts:        opts,
-		dispatchers: make(map[string]*dispatcher),
+		opts: opts,
 		connPool: sync.Pool{New: func() interface{} {
 			return opts.ConnFactory()
 		}},
@@ -62,7 +61,11 @@ func SubmitDelayed(queue string, d time.Duration, payload interface{}) (*Job, er
 }
 
 func Register(queue string, numWorkers int, f HandlerFunc) {
-	DefaultClient.Register(queue, numWorkers, f)
+	q := Queue{
+		Name:       queue,
+		NumWorkers: numWorkers,
+	}
+	DefaultClient.Register(q, f)
 }
 
 func Work() Canceller {

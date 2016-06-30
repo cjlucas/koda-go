@@ -16,7 +16,7 @@ var DefaultClient = NewClient(nil)
 type Client struct {
 	opts        *Options
 	connPool    sync.Pool
-	dispatchers map[string]*dispatcher
+	dispatchers []*dispatcher
 }
 
 type Options struct {
@@ -25,32 +25,12 @@ type Options struct {
 	ConnFactory func() Conn
 }
 
-func (c *Client) newQueue(name string) *Queue {
-	q := &Queue{
-		Name:   name,
-		client: c,
-	}
-
-	q.queueKeys = make([]string, maxPriority-minPriority+1)
-	i := 0
-	for j := maxPriority; j >= minPriority; j-- {
-		q.queueKeys[i] = c.priorityQueueKey(name, j)
-		i++
-	}
-
-	return q
-}
-
 func (c *Client) Job(id int) (Job, error) {
 	conn := c.getConn()
 	defer c.putConn(conn)
 
 	job, err := unmarshalJob(conn, c.jobKey(id))
 	return *job, err
-}
-
-func (c *Client) Queue(name string) *Queue {
-	return c.newQueue(name)
 }
 
 func (c *Client) persistJob(j *Job, conn Conn, fields ...string) error {
@@ -118,69 +98,50 @@ func (c *Client) SubmitDelayed(queue Queue, d time.Duration, payload interface{}
 	return j, c.addJobToDelayedQueue(queue.Name, j, conn)
 }
 
-func (c *Client) Register(queue string, numWorkers int, f HandlerFunc) {
-	c.dispatchers[queue] = &dispatcher{
-		Queue:         c.Queue(queue),
-		NumWorkers:    numWorkers,
-		Handler:       f,
-		MaxRetries:    5,
-		RetryInterval: 5 * time.Second,
+func (c *Client) Register(queue Queue, f HandlerFunc) {
+	if queue.MaxAttempts < 1 {
+		queue.MaxAttempts = 1
 	}
-}
-
-// Canceller allows the user to cancel all working jobs. If timeout is not set,
-// all currently working jobs will immediately be marked failed.
-type Canceller interface {
-	Cancel()
-	CancelWithTimeout(d time.Duration)
-}
-
-type canceller struct {
-	dispatchers []*dispatcher
-}
-
-func (c *canceller) Cancel() {
-	c.CancelWithTimeout(0)
-}
-
-func (c *canceller) CancelWithTimeout(d time.Duration) {
-	n := len(c.dispatchers)
-	if n == 0 {
-		return
+	if queue.NumWorkers < 1 {
+		queue.NumWorkers = 1
 	}
 
-	done := make(chan struct{}, n)
-	for i := range c.dispatchers {
-		di := c.dispatchers[i]
-		go func() {
-			di.Cancel(d)
-			done <- struct{}{}
-		}()
-	}
-
-	for i := 0; i < n; i++ {
-		<-done
-	}
+	c.dispatchers = append(c.dispatchers, &dispatcher{
+		Queue:   queue,
+		Handler: f,
+	})
 }
 
-func (c *Client) Work() Canceller {
-	var dispatchers []*dispatcher
-	for _, d := range c.dispatchers {
-		d.Run()
-		dispatchers = append(dispatchers, d)
+func (c *Client) retry(j *Job, queue Queue) error {
+	conn := c.getConn()
+	defer c.putConn(conn)
+
+	j.State = Queued
+	j.DelayedUntil = time.Now().UTC().Add(queue.RetryInterval)
+
+	if err := c.persistJob(j, conn, "state", "delayed_until"); err != nil {
+		return err
 	}
 
-	return &canceller{dispatchers: dispatchers}
+	return c.addJobToDelayedQueue(queue.Name, j, conn)
 }
 
-func (c *Client) WorkForever() {
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt)
-	canceller := c.Work()
+func (c *Client) finish(j *Job) error {
+	conn := c.getConn()
+	defer c.putConn(conn)
 
-	<-sig
-	signal.Stop(sig)
-	canceller.CancelWithTimeout(0)
+	j.State = Finished
+	j.CompletionTime = time.Now().UTC()
+
+	return c.persistJob(j, conn, "state", "completion_time")
+}
+
+func (c *Client) kill(j *Job) error {
+	conn := c.getConn()
+	defer c.putConn(conn)
+
+	j.State = Dead
+	return c.persistJob(j, conn, "state")
 }
 
 func (c *Client) popJob(conn Conn, delayedQueue string, priorityQueues ...string) (string, error) {
@@ -238,6 +199,60 @@ func (c *Client) wait(queue Queue) (Job, error) {
 	c.persistJob(j, conn, "state", "num_attempts")
 
 	return *j, nil
+}
+
+func (c *Client) Work() Canceller {
+	for _, d := range c.dispatchers {
+		d.client = c
+		d.Run()
+	}
+
+	return &canceller{dispatchers: c.dispatchers}
+}
+
+func (c *Client) WorkForever() {
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt)
+	canceller := c.Work()
+
+	<-sig
+	signal.Stop(sig)
+	canceller.CancelWithTimeout(0)
+}
+
+// Canceller allows the user to cancel all working jobs. If timeout is not set,
+// all currently working jobs will immediately be marked failed.
+type Canceller interface {
+	Cancel()
+	CancelWithTimeout(d time.Duration)
+}
+
+type canceller struct {
+	dispatchers []*dispatcher
+}
+
+func (c *canceller) Cancel() {
+	c.CancelWithTimeout(0)
+}
+
+func (c *canceller) CancelWithTimeout(d time.Duration) {
+	n := len(c.dispatchers)
+	if n == 0 {
+		return
+	}
+
+	done := make(chan struct{}, n)
+	for i := range c.dispatchers {
+		di := c.dispatchers[i]
+		go func() {
+			di.Cancel(d)
+			done <- struct{}{}
+		}()
+	}
+
+	for i := 0; i < n; i++ {
+		<-done
+	}
 }
 
 func (c *Client) getConn() Conn {

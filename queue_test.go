@@ -17,9 +17,9 @@ func TestSubmit(t *testing.T) {
 	}
 
 	curID := 0
-	q := client.Queue("q")
+	q := Queue{Name: "q"}
 	for _, c := range cases {
-		job, err := client.Submit(*q, c.Priority, c.Payload)
+		job, err := client.Submit(q, c.Priority, c.Payload)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -59,10 +59,10 @@ func TestSubmit(t *testing.T) {
 
 func TestWait(t *testing.T) {
 	client := newTestClient()
-	q := client.Queue("q")
-	client.Submit(*q, 100, nil)
+	q := Queue{Name: "q"}
+	client.Submit(q, 100, nil)
 
-	job, err := q.Wait()
+	job, err := client.wait(q)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,11 +74,11 @@ func TestWait(t *testing.T) {
 
 func TestWait_Delayed(t *testing.T) {
 	client := newTestClient()
-	q := client.Queue("q")
+	q := Queue{Name: "q"}
 
-	job, _ := client.SubmitDelayed(*q, 0, nil)
+	job, _ := client.SubmitDelayed(q, 0, nil)
 
-	j, err := q.Wait()
+	j, err := client.wait(q)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,12 +89,12 @@ func TestWait_Delayed(t *testing.T) {
 
 func TestWait_Priority(t *testing.T) {
 	client := newTestClient()
-	q := client.Queue("q")
+	q := Queue{Name: "q"}
 
-	job1, _ := client.Submit(*q, 100, nil)
-	client.Submit(*q, 50, nil)
+	job1, _ := client.Submit(q, 100, nil)
+	client.Submit(q, 50, nil)
 
-	j, err := q.Wait()
+	j, err := client.wait(q)
 	if err != nil {
 		t.Fatal(err)
 	}
