@@ -10,3 +10,11 @@ func newTestClient() *Client {
 		},
 	})
 }
+
+func newQueue(name string) Queue {
+	return Queue{
+		Name:        name,
+		NumWorkers:  1,
+		MaxAttempts: 1,
+	}
+}

@@ -9,7 +9,6 @@ import (
 )
 
 func TestWork(t *testing.T) {
-	t.SkipNow()
 	client := newTestClient()
 	q := Queue{Name: "q"}
 
@@ -34,9 +33,11 @@ func TestWork(t *testing.T) {
 }
 
 func TestWorkForever(t *testing.T) {
-	t.SkipNow()
 	client := newTestClient()
-	q := Queue{Name: "q"}
+	q := Queue{
+		Name:        "q",
+		MaxAttempts: 2,
+	}
 
 	next := make(chan struct{})
 	client.Register(q, func(job Job) error {

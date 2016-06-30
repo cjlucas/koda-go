@@ -144,8 +144,7 @@ func (c *Client) kill(j *Job) error {
 	return c.persistJob(j, conn, "state")
 }
 
-func (c *Client) popJob(conn Conn, delayedQueue string, priorityQueues ...string) (string, error) {
-	delayedQueueKey := c.delayedQueueKey(delayedQueue)
+func (c *Client) popJob(conn Conn, delayedQueueKey string, priorityQueues ...string) (string, error) {
 	results, err := conn.ZPopByScore(
 		delayedQueueKey,
 		0,
@@ -178,6 +177,15 @@ func (c *Client) popJob(conn Conn, delayedQueue string, priorityQueues ...string
 func (c *Client) wait(queue Queue) (Job, error) {
 	conn := c.getConn()
 	defer c.putConn(conn)
+
+	if len(queue.queueKeys) == 0 {
+		queue.queueKeys = make([]string, maxPriority-minPriority+1)
+		i := 0
+		for j := maxPriority; j >= minPriority; j-- {
+			queue.queueKeys[i] = c.priorityQueueKey(queue.Name, j)
+			i++
+		}
+	}
 
 	jobKey, err := c.popJob(conn, c.delayedQueueKey(queue.Name), queue.queueKeys...)
 	if jobKey == "" {

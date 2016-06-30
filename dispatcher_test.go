@@ -130,9 +130,8 @@ func TestDispatcherRun_Retry(t *testing.T) {
 }
 
 func TestDispatcher(t *testing.T) {
-	t.SkipNow()
 	c := newTestClient()
-	q := Queue{Name: "q"}
+	q := newQueue("q")
 
 	job, _ := c.Submit(q, 100, nil)
 
@@ -165,9 +164,8 @@ func TestDispatcher(t *testing.T) {
 }
 
 func TestDispatcherCancel_Timeout(t *testing.T) {
-	t.SkipNow()
 	c := newTestClient()
-	q := Queue{Name: "q"}
+	q := newQueue("q")
 
 	job, _ := c.Submit(q, 100, nil)
 
