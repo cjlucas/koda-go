@@ -41,15 +41,15 @@ func (s JobState) String() string {
 }
 
 // Job represents a koda job. Job should not be instantiated directly. Instead
-// use Client.Submit and Client.SubmitDelayed to create a Job.
+// use Client.CreateJob, Client.Submit and Client.SubmitDelayed to create a Job.
 type Job struct {
 	ID             int
 	State          JobState
 	DelayedUntil   time.Time
 	CreationTime   time.Time
 	CompletionTime time.Time
-	Priority       int
-	Payload        interface{}
+	Priority       int         // TODO: unexport this
+	Payload        interface{} // TODO: unexport this. User should user UnmarshalPayload instead.
 	rawPayload     string
 	NumAttempts    int
 }

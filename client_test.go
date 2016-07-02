@@ -7,6 +7,57 @@ import (
 	"time"
 )
 
+func TestCreateJob(t *testing.T) {
+	client := newTestClient()
+
+	job, err := client.CreateJob(map[string]string{
+		"data": "stuff",
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	job, err = client.Job(job.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if job.State != Initial {
+		t.Error("unexpected job state:", job.State)
+	}
+}
+
+func testJobSubmission(t *testing.T, submitFunc func(client *Client, job Job) (Job, error)) {
+	client := newTestClient()
+
+	job, err := client.CreateJob(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	job, err = submitFunc(client, job)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if job.State != Queued {
+		t.Error("unexpected job state:", job.State)
+	}
+}
+
+func TestSubmitJob(t *testing.T) {
+	testJobSubmission(t, func(client *Client, job Job) (Job, error) {
+		return client.SubmitJob(Queue{Name: "q"}, 100, job)
+	})
+}
+
+func TestSubmitDelayedJob(t *testing.T) {
+	testJobSubmission(t, func(client *Client, job Job) (Job, error) {
+		return client.SubmitDelayedJob(Queue{Name: "q"}, 0, job)
+	})
+}
+
 func TestWork(t *testing.T) {
 	client := newTestClient()
 	q := Queue{Name: "q"}

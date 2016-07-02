@@ -30,7 +30,7 @@ type Client struct {
 
 // Options for a Client.
 type Options struct {
-	// Redis URL (format: redis://host[:port][/database])
+	// Redis URL (format: redis://[auth@]host[:port][/database])
 	// Default: redis://localhost:6379
 	URL string
 
@@ -39,6 +39,16 @@ type Options struct {
 	Prefix string
 
 	ConnFactory func() Conn
+}
+
+// CreateJob will create a job in the Initial state.
+func (c *Client) CreateJob(payload interface{}) (Job, error) {
+	conn := c.getConn()
+	defer c.putConn(conn)
+
+	job := Job{Payload: payload}
+	err := c.persistNewJob(&job, conn)
+	return job, err
 }
 
 // Job fetches a job with the given job ID
@@ -94,6 +104,25 @@ func (c *Client) Submit(queue Queue, priority int, payload interface{}) (*Job, e
 	return j, c.addJobToQueue(queue.Name, j, conn)
 }
 
+func (c *Client) SubmitJob(queue Queue, priority int, job Job) (Job, error) {
+	conn := c.getConn()
+	defer c.putConn(conn)
+
+	job, err := c.Job(job.ID)
+	if err != nil {
+		return Job{}, fmt.Errorf("could not fetch job: %s", err)
+	}
+
+	if job.State != Initial {
+		return Job{}, fmt.Errorf("invalid job state: %s", job.State)
+	}
+
+	job.Priority = priority
+	job.State = Queued
+
+	return job, c.addJobToQueue(queue.Name, &job, conn)
+}
+
 func (c *Client) addJobToDelayedQueue(queueName string, j *Job, conn Conn) error {
 	_, err := conn.ZAddNX(c.delayedQueueKey(queueName), timeAsFloat(j.DelayedUntil), c.jobKey(j.ID))
 	return err
@@ -115,6 +144,25 @@ func (c *Client) SubmitDelayed(queue Queue, d time.Duration, payload interface{}
 	}
 
 	return j, c.addJobToDelayedQueue(queue.Name, j, conn)
+}
+
+func (c *Client) SubmitDelayedJob(queue Queue, d time.Duration, job Job) (Job, error) {
+	conn := c.getConn()
+	defer c.putConn(conn)
+
+	job, err := c.Job(job.ID)
+	if err != nil {
+		return Job{}, fmt.Errorf("could not fetch job: %s", err)
+	}
+
+	if job.State != Initial {
+		return Job{}, fmt.Errorf("invalid job state: %s", job.State)
+	}
+
+	job.DelayedUntil = time.Now().Add(d).UTC()
+	job.State = Queued
+
+	return job, c.addJobToDelayedQueue(queue.Name, &job, conn)
 }
 
 // Register a HandlerFunc for a given Queue
