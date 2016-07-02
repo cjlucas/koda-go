@@ -2,7 +2,7 @@
 
 A managed, hybrid priority/delayed job queue. Built on redis.
 
-# Getting Started #
+### Getting Started ###
 
 ```go
 // Add a job to the priority queue. Lowest priority is 0, highest priority is 100.
