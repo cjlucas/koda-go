@@ -73,7 +73,7 @@ func Register(queue string, numWorkers int, f HandlerFunc) {
 	DefaultClient.Register(q, f)
 }
 
-// Work will begin processing any registered queues in a seperate goroutine.
+// Work will begin processing any registered queues in a separate goroutine.
 // Use returned Canceller to stop any outstanding workers.
 func Work() Canceller {
 	return DefaultClient.Work()

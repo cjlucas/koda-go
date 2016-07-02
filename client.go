@@ -104,6 +104,7 @@ func (c *Client) Submit(queue Queue, priority int, payload interface{}) (Job, er
 	return j, c.addJobToQueue(queue.Name, &j, conn)
 }
 
+// SubmitJob puts an existing job on the priority queue.
 func (c *Client) SubmitJob(queue Queue, priority int, job Job) (Job, error) {
 	conn := c.getConn()
 	defer c.putConn(conn)
@@ -146,6 +147,7 @@ func (c *Client) SubmitDelayed(queue Queue, d time.Duration, payload interface{}
 	return j, c.addJobToDelayedQueue(queue.Name, &j, conn)
 }
 
+// SubmitDelayedJob puts an existing job on the delayed queue.
 func (c *Client) SubmitDelayedJob(queue Queue, d time.Duration, job Job) (Job, error) {
 	conn := c.getConn()
 	defer c.putConn(conn)
@@ -277,7 +279,7 @@ func (c *Client) wait(queue Queue) (Job, error) {
 	return *j, nil
 }
 
-// Work will begin processing any registered queues in a seperate goroutine.
+// Work will begin processing any registered queues in a separate goroutine.
 // Use returned Canceller to stop any outstanding workers.
 func (c *Client) Work() Canceller {
 	for _, d := range c.dispatchers {

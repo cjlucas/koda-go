@@ -107,11 +107,9 @@ func (d *dispatcher) Run() {
 	}
 
 	d.cancel = make(chan struct{})
-	d.jobManager = jobManager{
-		Queue: d.Queue,
-		c:     d.client,
-		jobs:  make(map[int]Job),
-	}
+	d.jobManager.Queue = d.Queue
+	d.jobManager.c = d.client
+	d.jobManager.jobs = make(map[int]Job)
 
 	go func() {
 		for {
