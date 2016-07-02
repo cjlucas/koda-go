@@ -55,12 +55,12 @@ func Configure(opts *Options) {
 }
 
 // Submit creates a job and puts it on the priority queue.
-func Submit(queue string, priority int, payload interface{}) (*Job, error) {
+func Submit(queue string, priority int, payload interface{}) (Job, error) {
 	return DefaultClient.Submit(Queue{Name: queue}, priority, payload)
 }
 
 // SubmitDelayed creates a job and puts it on the delayed queue.
-func SubmitDelayed(queue string, d time.Duration, payload interface{}) (*Job, error) {
+func SubmitDelayed(queue string, d time.Duration, payload interface{}) (Job, error) {
 	return DefaultClient.SubmitDelayed(Queue{Name: queue}, d, payload)
 }
 

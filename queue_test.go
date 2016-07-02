@@ -52,7 +52,7 @@ func TestSubmit(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		equals(*job)
+		equals(job)
 		equals(j)
 	}
 }

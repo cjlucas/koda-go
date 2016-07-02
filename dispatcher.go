@@ -129,7 +129,7 @@ func (d *dispatcher) Run() {
 				d.jobManager.Add(job)
 
 				go func() {
-					err := d.Handler(job)
+					err := d.Handler(&job)
 					if err != nil {
 						d.jobManager.Fail(job)
 					} else {

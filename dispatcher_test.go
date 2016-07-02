@@ -33,7 +33,7 @@ func TestDispatcherRun(t *testing.T) {
 	dispatcher := dispatcher{
 		Queue:  q,
 		client: c,
-		Handler: func(job Job) error {
+		Handler: func(job *Job) error {
 			hits <- struct{}{}
 			if len(hits) >= N {
 				next <- struct{}{}
@@ -103,7 +103,7 @@ func TestDispatcherRun_Retry(t *testing.T) {
 	dispatcher := dispatcher{
 		Queue:  q,
 		client: c,
-		Handler: func(job Job) error {
+		Handler: func(job *Job) error {
 			hits++
 			if hits == n {
 				next <- struct{}{}
@@ -140,7 +140,7 @@ func TestDispatcher(t *testing.T) {
 	dispatcher := dispatcher{
 		Queue:  q,
 		client: c,
-		Handler: func(job Job) error {
+		Handler: func(job *Job) error {
 			next <- struct{}{}
 			lock.Lock()
 			lock.Unlock()
@@ -173,7 +173,7 @@ func TestDispatcherCancel_Timeout(t *testing.T) {
 	dispatcher := dispatcher{
 		Queue:  q,
 		client: c,
-		Handler: func(job Job) error {
+		Handler: func(job *Job) error {
 			next <- struct{}{}
 			next <- struct{}{}
 			return nil

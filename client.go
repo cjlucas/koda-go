@@ -15,7 +15,7 @@ import (
 // is returned, the job will be marked as failed. If Job.NumAttempts exceeds
 // Queue.MaxAttempts, the job is placed in the Dead state. Otherwise it
 // is placed on the delayed queue with a delay of Queue.RetryInterval
-type HandlerFunc func(j Job) error
+type HandlerFunc func(j *Job) error
 
 // DefaultClient is the Client used by the package-level functions.
 var DefaultClient = NewClient(nil)
@@ -87,21 +87,21 @@ func (c *Client) addJobToQueue(queueName string, j *Job, conn Conn) error {
 }
 
 // Submit creates a job and puts it on the priority queue.
-func (c *Client) Submit(queue Queue, priority int, payload interface{}) (*Job, error) {
+func (c *Client) Submit(queue Queue, priority int, payload interface{}) (Job, error) {
 	conn := c.getConn()
 	defer c.putConn(conn)
 
-	j := &Job{
+	j := Job{
 		payload:  payload,
 		Priority: priority,
 		State:    Queued,
 	}
 
-	if err := c.persistNewJob(j, conn); err != nil {
-		return nil, err
+	if err := c.persistNewJob(&j, conn); err != nil {
+		return Job{}, err
 	}
 
-	return j, c.addJobToQueue(queue.Name, j, conn)
+	return j, c.addJobToQueue(queue.Name, &j, conn)
 }
 
 func (c *Client) SubmitJob(queue Queue, priority int, job Job) (Job, error) {
@@ -129,21 +129,21 @@ func (c *Client) addJobToDelayedQueue(queueName string, j *Job, conn Conn) error
 }
 
 // SubmitDelayed creates a job and puts it on the delayed queue.
-func (c *Client) SubmitDelayed(queue Queue, d time.Duration, payload interface{}) (*Job, error) {
+func (c *Client) SubmitDelayed(queue Queue, d time.Duration, payload interface{}) (Job, error) {
 	conn := c.getConn()
 	defer c.putConn(conn)
 
-	j := &Job{
+	j := Job{
 		payload:      payload,
 		DelayedUntil: time.Now().Add(d).UTC(),
 		State:        Queued,
 	}
 
-	if err := c.persistNewJob(j, conn); err != nil {
-		return nil, err
+	if err := c.persistNewJob(&j, conn); err != nil {
+		return Job{}, err
 	}
 
-	return j, c.addJobToDelayedQueue(queue.Name, j, conn)
+	return j, c.addJobToDelayedQueue(queue.Name, &j, conn)
 }
 
 func (c *Client) SubmitDelayedJob(queue Queue, d time.Duration, job Job) (Job, error) {

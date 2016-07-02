@@ -65,7 +65,7 @@ func TestWork(t *testing.T) {
 	client.Submit(q, 100, nil)
 
 	next := make(chan struct{})
-	client.Register(q, func(job Job) error {
+	client.Register(q, func(job *Job) error {
 		next <- struct{}{}
 		return nil
 	})
@@ -90,7 +90,7 @@ func TestWorkForever(t *testing.T) {
 	}
 
 	next := make(chan struct{})
-	client.Register(q, func(job Job) error {
+	client.Register(q, func(job *Job) error {
 		next <- struct{}{}
 		return nil
 	})
