@@ -9,8 +9,6 @@ import (
 	"gopkg.in/redis.v3"
 )
 
-var NilError = redis.Nil
-
 // GoRedisAdapter is an adapter for the redis.v3 library
 type GoRedisAdapter struct {
 	R                 *redis.Client

@@ -183,7 +183,7 @@ func (c *Client) popJob(conn Conn, delayedQueueKey string, priorityQueues ...str
 	}
 
 	results, err = conn.BLPop(1*time.Second, priorityQueues...)
-	if err != nil && err != NilError {
+	if err != nil {
 		return "", err
 	}
 

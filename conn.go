@@ -3,7 +3,7 @@ package koda
 import "time"
 
 // Conn may be implemented by custom redis connections. See Options.ConnFactory.
-// Each function must be atomic.
+// Note to implementers, each function must be atomic.
 type Conn interface {
 	Incr(key string) (int, error)
 	// TODO: Update this to return a map[string]string
