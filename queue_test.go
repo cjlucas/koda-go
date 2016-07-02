@@ -38,8 +38,8 @@ func TestSubmit(t *testing.T) {
 				t.Errorf("unexpected job state: %s", job.State)
 			}
 
-			if !reflect.DeepEqual(c.Payload, job.Payload) {
-				t.Errorf("payload mismatch: %#v != %#v", c.Payload, job.Payload)
+			if !reflect.DeepEqual(c.Payload, job.payload) {
+				t.Errorf("payload mismatch: %#v != %#v", c.Payload, job.payload)
 			}
 
 			if c.Priority != job.Priority {

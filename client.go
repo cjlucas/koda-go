@@ -46,7 +46,7 @@ func (c *Client) CreateJob(payload interface{}) (Job, error) {
 	conn := c.getConn()
 	defer c.putConn(conn)
 
-	job := Job{Payload: payload}
+	job := Job{payload: payload}
 	err := c.persistNewJob(&job, conn)
 	return job, err
 }
@@ -92,7 +92,7 @@ func (c *Client) Submit(queue Queue, priority int, payload interface{}) (*Job, e
 	defer c.putConn(conn)
 
 	j := &Job{
-		Payload:  payload,
+		payload:  payload,
 		Priority: priority,
 		State:    Queued,
 	}
@@ -134,7 +134,7 @@ func (c *Client) SubmitDelayed(queue Queue, d time.Duration, payload interface{}
 	defer c.putConn(conn)
 
 	j := &Job{
-		Payload:      payload,
+		payload:      payload,
 		DelayedUntil: time.Now().Add(d).UTC(),
 		State:        Queued,
 	}

@@ -48,10 +48,11 @@ type Job struct {
 	DelayedUntil   time.Time
 	CreationTime   time.Time
 	CompletionTime time.Time
-	Priority       int         // TODO: unexport this
-	Payload        interface{} // TODO: unexport this. User should user UnmarshalPayload instead.
-	rawPayload     string
+	Priority       int
 	NumAttempts    int
+
+	payload    interface{}
+	rawPayload string
 }
 
 // UnmarshalPayload will unmarshal the associated payload into v.
@@ -70,7 +71,7 @@ func (j *Job) hash() (map[string]string, error) {
 		"num_attempts":    strconv.Itoa(int(j.NumAttempts)),
 	}
 
-	jsonPayload, err := json.Marshal(j.Payload)
+	jsonPayload, err := json.Marshal(j.payload)
 	if err != nil {
 		return nil, err
 	}
@@ -137,9 +138,9 @@ func unmarshalJob(c Conn, key string) (*Job, error) {
 		CreationTime:   u.atot(propMap["creation_time"]),
 		CompletionTime: u.atot(propMap["completion_time"]),
 		Priority:       u.atoi(propMap["priority"]),
-		Payload:        u.parseJSON(propMap["payload"]),
-		rawPayload:     propMap["payload"],
 		NumAttempts:    u.atoi(propMap["num_attempts"]),
+		payload:        u.parseJSON(propMap["payload"]),
+		rawPayload:     propMap["payload"],
 	}
 
 	if u.Err != nil {
