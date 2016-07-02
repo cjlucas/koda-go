@@ -9,37 +9,37 @@ import (
 	"gopkg.in/redis.v3"
 )
 
-// GoRedisAdapter is an adapter for the redis.v3 library
-type GoRedisAdapter struct {
+// redisAdapter is an adapter for the redis.v3 library
+type redisAdapter struct {
 	R                 *redis.Client
 	subscriptions     map[string][]chan string
 	subscriptionsLock sync.RWMutex
 }
 
-func (r *GoRedisAdapter) Incr(key string) (int, error) {
+func (r *redisAdapter) Incr(key string) (int, error) {
 	cmd := r.R.Incr(key)
 	return int(cmd.Val()), cmd.Err()
 }
 
-func (r *GoRedisAdapter) HGetAll(key string) ([]string, error) {
+func (r *redisAdapter) HGetAll(key string) ([]string, error) {
 	return r.R.HGetAll(key).Result()
 }
 
-func (r *GoRedisAdapter) HSetAll(key string, fields map[string]string) error {
+func (r *redisAdapter) HSetAll(key string, fields map[string]string) error {
 	_, err := r.R.HMSetMap(key, fields).Result()
 	return err
 }
 
-func (r *GoRedisAdapter) RPush(key string, value ...string) (int, error) {
+func (r *redisAdapter) RPush(key string, value ...string) (int, error) {
 	cmd := r.R.RPush(key, value...)
 	return int(cmd.Val()), cmd.Err()
 }
 
-func (r *GoRedisAdapter) BLPop(timeout time.Duration, keys ...string) ([]string, error) {
+func (r *redisAdapter) BLPop(timeout time.Duration, keys ...string) ([]string, error) {
 	return r.R.BLPop(timeout, keys...).Result()
 }
 
-func (r *GoRedisAdapter) ZAddNX(key string, score float64, member string) (int, error) {
+func (r *redisAdapter) ZAddNX(key string, score float64, member string) (int, error) {
 	cmd := r.R.ZAddNX(key, redis.Z{
 		Score:  score,
 		Member: member,
@@ -48,7 +48,7 @@ func (r *GoRedisAdapter) ZAddNX(key string, score float64, member string) (int, 
 	return int(cmd.Val()), cmd.Err()
 }
 
-func (r *GoRedisAdapter) ZPopByScore(key string, min, max float64, minIncl, maxIncl bool, offset, count int) ([]string, error) {
+func (r *redisAdapter) ZPopByScore(key string, min, max float64, minIncl, maxIncl bool, offset, count int) ([]string, error) {
 	script := `
 	local res = redis.call('ZRANGEBYSCORE', KEYS[1], ARGV[1], ARGV[2], 'LIMIT', ARGV[3], ARGV[4])
 	for i=1,#res do
@@ -87,13 +87,13 @@ func (r *GoRedisAdapter) ZPopByScore(key string, min, max float64, minIncl, maxI
 	return members, nil
 }
 
-func (r *GoRedisAdapter) Scan(cursor int, match string, count int) (int, []string, error) {
+func (r *redisAdapter) Scan(cursor int, match string, count int) (int, []string, error) {
 	cmd := r.R.Scan(int64(cursor), match, int64(count))
 	offset, results := cmd.Val()
 	return int(offset), results, cmd.Err()
 }
 
-func (r *GoRedisAdapter) Subscribe(channel string) (<-chan string, error) {
+func (r *redisAdapter) Subscribe(channel string) (<-chan string, error) {
 	r.subscriptionsLock.Lock()
 	defer r.subscriptionsLock.Unlock()
 	if r.subscriptions == nil {
@@ -119,6 +119,6 @@ func (r *GoRedisAdapter) Subscribe(channel string) (<-chan string, error) {
 	return ch, nil
 }
 
-func (r *GoRedisAdapter) Close() error {
+func (r *redisAdapter) Close() error {
 	return r.R.Close()
 }

@@ -37,7 +37,7 @@ func NewClient(opts *Options) *Client {
 				Addr: url.Host,
 				DB:   int64(db),
 			})
-			return &GoRedisAdapter{R: r}
+			return &redisAdapter{R: r}
 		}
 	}
 
