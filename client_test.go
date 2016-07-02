@@ -1,7 +1,6 @@
 package koda
 
 import (
-	"fmt"
 	"os"
 	"syscall"
 	"testing"
@@ -69,7 +68,6 @@ func TestWorkForever(t *testing.T) {
 
 	j, _ := client.Job(job.ID)
 	if j.State != Queued || j.NumAttempts != 1 {
-		fmt.Println(j)
 		t.Fatal("job should be readded to queue")
 	}
 }
