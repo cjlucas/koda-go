@@ -7,14 +7,20 @@ import (
 	"time"
 )
 
+// JobState represesents the state of a job
 type JobState int
 
 const (
-	Initial  JobState = 0
-	Queued            = 1
-	Working           = 2
-	Finished          = 3
-	Dead              = 4
+	// Initial jobs are created jobs, but not associated with a queue.
+	Initial JobState = 0
+	// Queued jobs are in a queue, waiting to be processed.
+	Queued = 1
+	// Working jobs are currently being processed.
+	Working = 2
+	// Finished jobs that have completed successfully
+	Finished = 3
+	// Dead jobs are jobs that have failed > Qeuue.MaxAttempts
+	Dead = 4
 )
 
 func (s JobState) String() string {
@@ -34,6 +40,8 @@ func (s JobState) String() string {
 	}
 }
 
+// Job represents a koda job. Job should not be instantiated directly. Instead
+// use Client.Submit and Client.SubmitDelayed to create a Job.
 type Job struct {
 	ID             int
 	State          JobState
@@ -44,6 +52,11 @@ type Job struct {
 	Payload        interface{}
 	rawPayload     string
 	NumAttempts    int
+}
+
+// UnmarshalPayload will unmarshal the associated payload into v.
+func (j *Job) UnmarshalPayload(v interface{}) error {
+	return json.Unmarshal([]byte(j.rawPayload), v)
 }
 
 func (j *Job) hash() (map[string]string, error) {
@@ -64,10 +77,6 @@ func (j *Job) hash() (map[string]string, error) {
 
 	hash["payload"] = string(jsonPayload)
 	return hash, nil
-}
-
-func (j *Job) UnmarshalPayload(v interface{}) error {
-	return json.Unmarshal([]byte(j.rawPayload), v)
 }
 
 type jobUnmarshaller struct {

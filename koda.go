@@ -9,6 +9,7 @@ import (
 	"gopkg.in/redis.v3"
 )
 
+// NewClient creates a new client with the given Options.
 func NewClient(opts *Options) *Client {
 	if opts == nil {
 		opts = &Options{}
@@ -48,18 +49,22 @@ func NewClient(opts *Options) *Client {
 	}
 }
 
+// Configure the DefaultClient with the given Options
 func Configure(opts *Options) {
 	DefaultClient = NewClient(opts)
 }
 
+// Submit creates a job and puts it on the priority queue.
 func Submit(queue string, priority int, payload interface{}) (*Job, error) {
 	return DefaultClient.Submit(Queue{Name: queue}, priority, payload)
 }
 
+// SubmitDelayed creates a job and puts it on the delayed queue.
 func SubmitDelayed(queue string, d time.Duration, payload interface{}) (*Job, error) {
 	return DefaultClient.SubmitDelayed(Queue{Name: queue}, d, payload)
 }
 
+// Register a given HandlerFunc with a queue
 func Register(queue string, numWorkers int, f HandlerFunc) {
 	q := Queue{
 		Name:       queue,
@@ -68,10 +73,14 @@ func Register(queue string, numWorkers int, f HandlerFunc) {
 	DefaultClient.Register(q, f)
 }
 
+// Work will begin processing any registered queues in a seperate goroutine.
+// Use returned Canceller to stop any outstanding workers.
 func Work() Canceller {
 	return DefaultClient.Work()
 }
 
+// WorkForever will being processing registered queues. This routine will
+// block until SIGINT is received.
 func WorkForever() {
 	DefaultClient.WorkForever()
 }

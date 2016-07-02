@@ -11,20 +11,37 @@ import (
 	"time"
 )
 
+// HandlerFunc is used when registering a worker for a queue. If an error
+// is returned, the job will be marked as failed. If Job.NumAttempts exceeds
+// Queue.MaxAttempts, the job is placed in the Dead state. Otherwise it
+// is placed on the delayed queue with a delay of Queue.RetryInterval
+type HandlerFunc func(j Job) error
+
+// DefaultClient is the Client used by the package-level functions.
 var DefaultClient = NewClient(nil)
 
+// Client represents a managed koda client. Users should not attempt
+// instantiate their own Client, but instead should use NewClient.
 type Client struct {
 	opts        *Options
 	connPool    sync.Pool
 	dispatchers []*dispatcher
 }
 
+// Options for a Client.
 type Options struct {
-	URL         string
-	Prefix      string
+	// Redis URL (format: redis://host[:port][/database])
+	// Default: redis://localhost:6379
+	URL string
+
+	// Prefix for redis keys
+	// Default: koda
+	Prefix string
+
 	ConnFactory func() Conn
 }
 
+// Job fetches a job with the given job ID
 func (c *Client) Job(id int) (Job, error) {
 	conn := c.getConn()
 	defer c.putConn(conn)
@@ -59,6 +76,7 @@ func (c *Client) addJobToQueue(queueName string, j *Job, conn Conn) error {
 	return err
 }
 
+// Submit creates a job and puts it on the priority queue.
 func (c *Client) Submit(queue Queue, priority int, payload interface{}) (*Job, error) {
 	conn := c.getConn()
 	defer c.putConn(conn)
@@ -81,6 +99,7 @@ func (c *Client) addJobToDelayedQueue(queueName string, j *Job, conn Conn) error
 	return err
 }
 
+// SubmitDelayed creates a job and puts it on the delayed queue.
 func (c *Client) SubmitDelayed(queue Queue, d time.Duration, payload interface{}) (*Job, error) {
 	conn := c.getConn()
 	defer c.putConn(conn)
@@ -98,6 +117,7 @@ func (c *Client) SubmitDelayed(queue Queue, d time.Duration, payload interface{}
 	return j, c.addJobToDelayedQueue(queue.Name, j, conn)
 }
 
+// Register a HandlerFunc for a given Queue
 func (c *Client) Register(queue Queue, f HandlerFunc) {
 	if queue.MaxAttempts < 1 {
 		queue.MaxAttempts = 1
@@ -209,6 +229,8 @@ func (c *Client) wait(queue Queue) (Job, error) {
 	return *j, nil
 }
 
+// Work will begin processing any registered queues in a seperate goroutine.
+// Use returned Canceller to stop any outstanding workers.
 func (c *Client) Work() Canceller {
 	for _, d := range c.dispatchers {
 		d.client = c
@@ -218,6 +240,8 @@ func (c *Client) Work() Canceller {
 	return &canceller{dispatchers: c.dispatchers}
 }
 
+// WorkForever will being processing registered queues. This routine will
+// block until SIGINT is received.
 func (c *Client) WorkForever() {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt)

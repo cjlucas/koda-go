@@ -5,8 +5,6 @@ import (
 	"time"
 )
 
-type HandlerFunc func(j Job) error
-
 // jobManager handles in-flight jobs being processed by the dispatcher. Its main
 // purpose is to handle data races during cancellation where both the cancellation
 // goroutine and the main run goroutine may attempt to update the state of a single job
