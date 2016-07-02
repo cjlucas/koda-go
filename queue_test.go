@@ -17,9 +17,9 @@ func TestSubmit(t *testing.T) {
 	}
 
 	curID := 0
-	q := client.Queue("q")
+	q := Queue{Name: "q"}
 	for _, c := range cases {
-		job, err := q.Submit(c.Priority, c.Payload)
+		job, err := client.Submit(q, c.Priority, c.Payload)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -38,8 +38,8 @@ func TestSubmit(t *testing.T) {
 				t.Errorf("unexpected job state: %s", job.State)
 			}
 
-			if !reflect.DeepEqual(c.Payload, job.Payload) {
-				t.Errorf("payload mismatch: %#v != %#v", c.Payload, job.Payload)
+			if !reflect.DeepEqual(c.Payload, job.payload) {
+				t.Errorf("payload mismatch: %#v != %#v", c.Payload, job.payload)
 			}
 
 			if c.Priority != job.Priority {
@@ -47,7 +47,7 @@ func TestSubmit(t *testing.T) {
 			}
 		}
 
-		j, err := q.Job(job.ID)
+		j, err := client.Job(job.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -59,10 +59,10 @@ func TestSubmit(t *testing.T) {
 
 func TestWait(t *testing.T) {
 	client := newTestClient()
-	q := client.Queue("q")
-	q.Submit(100, nil)
+	q := Queue{Name: "q"}
+	client.Submit(q, 100, nil)
 
-	job, err := q.Wait()
+	job, err := client.wait(q)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,11 +74,11 @@ func TestWait(t *testing.T) {
 
 func TestWait_Delayed(t *testing.T) {
 	client := newTestClient()
-	q := client.Queue("q")
+	q := Queue{Name: "q"}
 
-	job, _ := q.SubmitDelayed(0, nil)
+	job, _ := client.SubmitDelayed(q, 0, nil)
 
-	j, err := q.Wait()
+	j, err := client.wait(q)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,12 +89,12 @@ func TestWait_Delayed(t *testing.T) {
 
 func TestWait_Priority(t *testing.T) {
 	client := newTestClient()
-	q := client.Queue("q")
+	q := Queue{Name: "q"}
 
-	job1, _ := q.Submit(100, nil)
-	q.Submit(50, nil)
+	job1, _ := client.Submit(q, 100, nil)
+	client.Submit(q, 50, nil)
 
-	j, err := q.Wait()
+	j, err := client.wait(q)
 	if err != nil {
 		t.Fatal(err)
 	}

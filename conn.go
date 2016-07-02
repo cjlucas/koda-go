@@ -2,15 +2,8 @@ package koda
 
 import "time"
 
-type ZRangeByScoreOpts struct {
-	Min          float64
-	Max          float64
-	MinInclusive bool
-	MaxInclusive bool
-	Offset       int
-	Count        int
-}
-
+// Conn may be implemented by custom redis connections. See Options.ConnFactory.
+// Note to implementers, each function must be atomic.
 type Conn interface {
 	Incr(key string) (int, error)
 	// TODO: Update this to return a map[string]string

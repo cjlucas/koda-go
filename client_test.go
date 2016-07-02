@@ -1,28 +1,71 @@
 package koda
 
 import (
-	"fmt"
 	"os"
 	"syscall"
 	"testing"
 	"time"
 )
 
-func TestQueue(t *testing.T) {
-	c := newTestClient()
-	if q := c.Queue("q"); q == nil {
-		t.Error("Queue was nil")
+func TestCreateJob(t *testing.T) {
+	client := newTestClient()
+
+	job, err := client.CreateJob(map[string]string{
+		"data": "stuff",
+	})
+
+	if err != nil {
+		t.Fatal(err)
 	}
+
+	job, err = client.Job(job.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if job.State != Initial {
+		t.Error("unexpected job state:", job.State)
+	}
+}
+
+func testJobSubmission(t *testing.T, submitFunc func(client *Client, job Job) (Job, error)) {
+	client := newTestClient()
+
+	job, err := client.CreateJob(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	job, err = submitFunc(client, job)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if job.State != Queued {
+		t.Error("unexpected job state:", job.State)
+	}
+}
+
+func TestSubmitJob(t *testing.T) {
+	testJobSubmission(t, func(client *Client, job Job) (Job, error) {
+		return client.SubmitJob(Queue{Name: "q"}, 100, job)
+	})
+}
+
+func TestSubmitDelayedJob(t *testing.T) {
+	testJobSubmission(t, func(client *Client, job Job) (Job, error) {
+		return client.SubmitDelayedJob(Queue{Name: "q"}, 0, job)
+	})
 }
 
 func TestWork(t *testing.T) {
 	client := newTestClient()
-	q := client.Queue("q")
+	q := Queue{Name: "q"}
 
-	q.Submit(100, nil)
+	client.Submit(q, 100, nil)
 
 	next := make(chan struct{})
-	client.Register("q", 1, func(job Job) error {
+	client.Register(q, func(job Job) error {
 		next <- struct{}{}
 		return nil
 	})
@@ -41,15 +84,18 @@ func TestWork(t *testing.T) {
 
 func TestWorkForever(t *testing.T) {
 	client := newTestClient()
-	q := client.Queue("q")
+	q := Queue{
+		Name:        "q",
+		MaxAttempts: 2,
+	}
 
 	next := make(chan struct{})
-	client.Register("q", 1, func(job Job) error {
+	client.Register(q, func(job Job) error {
 		next <- struct{}{}
 		return nil
 	})
 
-	job, _ := q.Submit(100, nil)
+	job, _ := client.Submit(q, 100, nil)
 
 	done := make(chan struct{})
 	go func() {
@@ -71,9 +117,8 @@ func TestWorkForever(t *testing.T) {
 	// Allow worker to complete
 	<-next
 
-	j, _ := q.Job(job.ID)
+	j, _ := client.Job(job.ID)
 	if j.State != Queued || j.NumAttempts != 1 {
-		fmt.Println(j)
 		t.Fatal("job should be readded to queue")
 	}
 }
