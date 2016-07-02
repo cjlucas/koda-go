@@ -2,6 +2,8 @@
 
 A managed, hybrid priority/delayed job queue. Built on redis.
 
+[![Build Status](https://travis-ci.org/cjlucas/koda-go.svg?branch=master)](https://travis-ci.org/cjlucas/koda-go)
+
 ## Getting Started ##
 
 ```go
