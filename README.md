@@ -18,7 +18,7 @@ koda.SubmitDelayed("send-newsletter", 5*time.Minute, map[string][]string{
 })
 
 // Register a HandlerFunc and specify the # of workers to work the queue
-koda.Register("send-newsletter", 10, func(job koda.Job) error {
+koda.Register("send-newsletter", 10, func(job *koda.Job) error {
     // Unmarshal the payload specified by Submit/SubmitDelayed
     var payload map[string][]string
     if err := job.UnmarshalPayload(&payload); err != nil {
