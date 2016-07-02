@@ -1,8 +1,8 @@
-### koda-go ###
+## koda-go ##
 
 A managed, hybrid priority/delayed job queue. Built on redis.
 
-## Getting Started ##
+# Getting Started #
 
 ```go
 // Add a job to the priority queue. Lowest priority is 0, highest priority is 100.
@@ -32,5 +32,4 @@ koda.Register("send-newsletter", 10, func(job koda.Job) error {
 })
 
 koda.WorkForever())
-}
 ```
