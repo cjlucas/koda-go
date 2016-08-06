@@ -57,6 +57,10 @@ func (c *Client) Job(id int) (Job, error) {
 	defer c.putConn(conn)
 
 	job, err := unmarshalJob(conn, c.jobKey(id))
+	if err != nil {
+		return Job{}, err
+	}
+
 	return *job, err
 }
 
